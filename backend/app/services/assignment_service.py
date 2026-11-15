@@ -62,8 +62,9 @@ class AssignmentService:
 
     def list_strategies(self) -> list[StrategyInfo]:
         active = self.active_strategy_key()
-        return [StrategyInfo(s.key, s.name, s.description, s.key == active)
-                for s in AssignmentStrategyRegistry.available()]
+        return [
+            StrategyInfo(s.key, s.name, s.description, s.key == active) for s in AssignmentStrategyRegistry.available()
+        ]
 
     def set_strategy(self, key: str, actor: User) -> None:
         if not actor.has_permission(Permission.MANAGE_CONFIGURATION):
@@ -71,8 +72,11 @@ class AssignmentService:
         AssignmentStrategyRegistry.create(key)  # validates the key
         old = self.active_strategy_key()
         self._uow.settings.set(STRATEGY_SETTING, key)
-        self._bus.publish(SettingChanged(occurred_at=self._clock.now(), actor_id=actor.id,
-                                         key=STRATEGY_SETTING, old_value=old, new_value=key))
+        self._bus.publish(
+            SettingChanged(
+                occurred_at=self._clock.now(), actor_id=actor.id, key=STRATEGY_SETTING, old_value=old, new_value=key
+            )
+        )
         self._uow.commit()
 
     # --- workload ---------------------------------------------------------------------
@@ -83,9 +87,11 @@ class AssignmentService:
     def candidates_for(self, incident: Incident) -> list[TechnicianCandidate]:
         counts = self._uow.incidents.active_counts_by_technician()
         history = self._uow.incidents.resolved_counts_for_service(incident.service_id)
-        return [TechnicianCandidate(t, counts.get(t.id, 0), history.get(t.id, 0))
-                for t in self._uow.users.list_technicians()
-                if t.is_active and t.id != incident.assigned_technician_id]
+        return [
+            TechnicianCandidate(t, counts.get(t.id, 0), history.get(t.id, 0))
+            for t in self._uow.users.list_technicians()
+            if t.is_active and t.id != incident.assigned_technician_id
+        ]
 
     # --- assignment -------------------------------------------------------------------
     def auto_assign(self, incident: Incident) -> AssignmentDecision:
@@ -93,8 +99,10 @@ class AssignmentService:
         category = self._uow.categories.get(incident.category_id) if incident.category_id else None
         last = self._uow.settings.get(LAST_ASSIGNED_SETTING)
         context = AssignmentContext(
-            service_id=incident.service_id, category_code=category.code if category else None,
-            priority=incident.priority, last_assigned_technician_id=int(last) if last else None,
+            service_id=incident.service_id,
+            category_code=category.code if category else None,
+            priority=incident.priority,
+            last_assigned_technician_id=int(last) if last else None,
         )
         decision = self.active_strategy().choose(self.candidates_for(incident), context)
         incident.assign(decision.technician, actor=None, reason=decision.reason, now=self._clock.now())
@@ -112,6 +120,7 @@ class AssignmentService:
         active = self._uow.incidents.active_counts_by_technician().get(technician.id, 0)
         if active >= technician.profile.max_workload:
             raise TechnicianWorkloadExceededError(technician.full_name, active, technician.profile.max_workload)
-        incident.assign(technician, actor=actor, reason=f"manual assignment by {actor.full_name}",
-                        now=self._clock.now())
+        incident.assign(
+            technician, actor=actor, reason=f"manual assignment by {actor.full_name}", now=self._clock.now()
+        )
         return technician

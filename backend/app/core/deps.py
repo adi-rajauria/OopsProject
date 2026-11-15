@@ -28,16 +28,18 @@ def get_infrastructure(request: Request) -> Infrastructure:
     return request.app.state.infra
 
 
-def get_container(session: Annotated[Session, Depends(get_session)],
-                  infra: Annotated[Infrastructure, Depends(get_infrastructure)]) -> ServiceContainer:
+def get_container(
+    session: Annotated[Session, Depends(get_session)], infra: Annotated[Infrastructure, Depends(get_infrastructure)]
+) -> ServiceContainer:
     return build_container(SqlAlchemyUnitOfWork(session, infra.clock), infra)
 
 
 Container = Annotated[ServiceContainer, Depends(get_container)]
 
 
-def get_current_user(container: Container,
-                     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer)]) -> User:
+def get_current_user(
+    container: Container, credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer)]
+) -> User:
     if credentials is None or credentials.scheme.lower() != "bearer":
         raise InvalidTokenError("Missing bearer token")
     return container.auth.authenticate(credentials.credentials)
@@ -52,8 +54,9 @@ def require(*permissions: Permission) -> Callable[[User], User]:
     def guard(user: CurrentUser) -> User:
         missing = [p.value for p in permissions if not user.has_permission(p)]
         if missing:
-            raise UnauthorizedOperationError(f"Your role ({user.role.value}) cannot perform this action",
-                                             details={"missing_permissions": missing})
+            raise UnauthorizedOperationError(
+                f"Your role ({user.role.value}) cannot perform this action", details={"missing_permissions": missing}
+            )
         return user
 
     return guard

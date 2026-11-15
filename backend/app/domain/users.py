@@ -89,8 +89,9 @@ class User(ABC):
             raise InvalidInputError("User id is immutable once assigned")
         self._id = new_id
 
-    def update_profile(self, *, full_name: str | None = None, phone: str | None = None,
-                       department: str | None = None) -> None:
+    def update_profile(
+        self, *, full_name: str | None = None, phone: str | None = None, department: str | None = None
+    ) -> None:
         if full_name is not None:
             self._full_name = require_text(full_name, "full_name", min_len=2, max_len=120)
         if phone is not None:
@@ -147,9 +148,7 @@ class TechnicianProfile:
 
 
 class Technician(User):
-    _PERMISSIONS = frozenset(
-        {Permission.REPORT_INCIDENT, Permission.VIEW_ALL_INCIDENTS, Permission.WORK_INCIDENTS}
-    )
+    _PERMISSIONS = frozenset({Permission.REPORT_INCIDENT, Permission.VIEW_ALL_INCIDENTS, Permission.WORK_INCIDENTS})
 
     def __init__(self, *, profile: TechnicianProfile | None = None, **kwargs) -> None:
         super().__init__(**kwargs)

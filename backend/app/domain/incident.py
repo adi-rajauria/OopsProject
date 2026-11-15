@@ -15,6 +15,7 @@ from app.domain.events import (
     IncidentUpdated,
     PriorityCalculated,
     PriorityChanged,
+    RelatedIncidentsDetected,
     SLAViolated,
     SLAWarningRaised,
 )
@@ -113,17 +114,40 @@ class Incident:
         self._pending_events: list[IncidentEvent] = []
 
     @classmethod
-    def report(cls, *, reporter: User, title: str, description: str, service_id: int, impact: int,
-               urgency: int, affected_users: int, suggested_category_id: int | None, now: datetime) -> "Incident":
+    def report(
+        cls,
+        *,
+        reporter: User,
+        title: str,
+        description: str,
+        service_id: int,
+        impact: int,
+        urgency: int,
+        affected_users: int,
+        suggested_category_id: int | None,
+        now: datetime,
+    ) -> "Incident":
         """Named constructor for a brand-new incident (used by IncidentFactory)."""
         incident = cls(
-            id=None, title=title, description=description, reporter_id=reporter.id, service_id=service_id,
-            impact=impact, urgency=urgency, affected_users=affected_users, created_at=now,
+            id=None,
+            title=title,
+            description=description,
+            reporter_id=reporter.id,
+            service_id=service_id,
+            impact=impact,
+            urgency=urgency,
+            affected_users=affected_users,
+            created_at=now,
             suggested_category_id=suggested_category_id,
         )
-        incident._raise(IncidentCreated(occurred_at=now, actor_id=reporter.id,
-                                        reporter_code=f"{reporter.role.value.title()} {reporter.display_code}",
-                                        title=incident.title))
+        incident._raise(
+            IncidentCreated(
+                occurred_at=now,
+                actor_id=reporter.id,
+                reporter_code=f"{reporter.role.value.title()} {reporter.display_code}",
+                title=incident.title,
+            )
+        )
         return incident
 
     # ------------------------------------------------------------------ validation
@@ -144,7 +168,11 @@ class Incident:
 
     @property
     def number(self) -> str:
-        return f"INC{1000 + self._id}" if self._id is not None else "INC-NEW"
+        return self.number_for(self._id) if self._id is not None else "INC-NEW"
+
+    @staticmethod
+    def number_for(incident_id: int) -> str:
+        return f"INC{1000 + incident_id}"
 
     @staticmethod
     def id_from_number(number: str) -> int | None:
@@ -271,13 +299,52 @@ class Incident:
             return self.comments
         return tuple(c for c in self._comments if not c.is_internal)
 
+    def available_actions(self, viewer: User, now: datetime) -> list[str]:
+        """What this viewer may do right now - mirrors the guards in the methods below,
+        so the UI only offers actions the domain will accept."""
+        allowed = set(self.allowed_transitions())
+        is_tech = isinstance(viewer, Technician) and self.is_assignee(viewer)
+        is_reporter = self.is_reporter(viewer)
+        can_assign = viewer.has_permission(Permission.ASSIGN_INCIDENTS)
+        actions = [
+            t.value
+            for t in (Transition.ACKNOWLEDGE, Transition.START_WORK, Transition.REQUEST_INFO, Transition.RESOLVE)
+            if is_tech and t in allowed
+        ]
+        actions += [
+            t.value
+            for t in (Transition.PROVIDE_INFO, Transition.VERIFY, Transition.REOPEN)
+            if is_reporter and t in allowed
+        ]
+        if can_assign and Transition.ASSIGN in allowed:
+            actions.append(Transition.ASSIGN.value)
+        if self.status is IncidentStatus.VERIFIED and (is_tech or viewer.has_permission(Permission.OVERRIDE_CLOSE)):
+            actions.append(Transition.CLOSE.value)
+        if (
+            self.status is IncidentStatus.RESOLVED
+            and viewer.has_permission(Permission.OVERRIDE_CLOSE)
+            and self.resolved_at is not None
+            and now - self.resolved_at >= UNVERIFIED_CLOSE_AFTER
+        ):
+            actions.append(Transition.CLOSE.value)
+        if self._state.accepts_updates and (is_reporter or is_tech or can_assign):
+            actions.append("update")
+        if self._state.accepts_comments and self.can_be_viewed_by(viewer):
+            actions.append("comment")
+        return actions
+
     def ref(self) -> IncidentRef:
         if self._id is None:
             raise InvalidIncidentError("Incident has not been persisted yet")
         return IncidentRef(
-            id=self._id, number=self.number, title=self._title, reporter_id=self._reporter_id,
-            assignee_id=self._assigned_technician_id, priority=self._priority,
-            status=self.status, service_id=self._service_id,
+            id=self._id,
+            number=self.number,
+            title=self._title,
+            reporter_id=self._reporter_id,
+            assignee_id=self._assigned_technician_id,
+            priority=self._priority,
+            status=self.status,
+            service_id=self._service_id,
         )
 
     # ------------------------------------------------------------------ identity / events
@@ -305,19 +372,31 @@ class Incident:
 
     def _moved(self, transition: Transition, actor: User | None, now: datetime, detail: str = "") -> None:
         previous = self._move(transition, now)
-        self._raise(IncidentTransitioned(
-            occurred_at=now, actor_id=actor.id if actor else None, transition=transition,
-            from_status=previous, to_status=self.status, detail=detail,
-        ))
+        self._raise(
+            IncidentTransitioned(
+                occurred_at=now,
+                actor_id=actor.id if actor else None,
+                transition=transition,
+                from_status=previous,
+                to_status=self.status,
+                detail=detail,
+            )
+        )
 
     def _record_sla_findings(self, findings: list[SLAFinding]) -> None:
         for f in findings:
             if f.kind is FindingKind.WARNING:
-                self._raise(SLAWarningRaised(occurred_at=f.detected_at, target=f.target, due_at=f.due_at,
-                                             elapsed_pct=f.elapsed_pct))
+                self._raise(
+                    SLAWarningRaised(
+                        occurred_at=f.detected_at, target=f.target, due_at=f.due_at, elapsed_pct=f.elapsed_pct
+                    )
+                )
             else:
-                self._raise(SLAViolated(occurred_at=f.detected_at, target=f.target, due_at=f.due_at,
-                                        overdue_minutes=f.overdue_minutes))
+                self._raise(
+                    SLAViolated(
+                        occurred_at=f.detected_at, target=f.target, due_at=f.due_at, overdue_minutes=f.overdue_minutes
+                    )
+                )
 
     # ------------------------------------------------------------------ guards
     def _require_assignee(self, actor: User, action: str) -> None:
@@ -339,16 +418,21 @@ class Incident:
         self._comments.append(Comment(author_id=actor.id, kind=kind, body=body, is_internal=internal, created_at=now))
 
     # ------------------------------------------------------------------ lifecycle behaviour
-    def classify(self, *, category: Category, priority: PriorityResult, sla: IncidentSLA, now: datetime) -> None:
+    def classify(
+        self, *, category: Category, priority: PriorityResult, sla: IncidentSLA, now: datetime, note: str = ""
+    ) -> None:
         """NEW -> CLASSIFIED: category, priority and SLA are fixed together (system action)."""
         self._move(Transition.CLASSIFY, now)
         self._category_id = category.id
         self._priority = priority.priority
         self._priority_score = priority.score
         self._sla = sla
-        self._raise(IncidentClassified(occurred_at=now, category_code=category.code))
-        self._raise(PriorityCalculated(occurred_at=now, priority=priority.priority, score=priority.score,
-                                       explanation=priority.explanation))
+        self._raise(IncidentClassified(occurred_at=now, category_code=category.code, note=note))
+        self._raise(
+            PriorityCalculated(
+                occurred_at=now, priority=priority.priority, score=priority.score, explanation=priority.explanation
+            )
+        )
 
     def assign(self, technician: Technician, *, actor: User | None, reason: str, now: datetime) -> None:
         if actor is not None and not actor.has_permission(Permission.ASSIGN_INCIDENTS):
@@ -358,11 +442,18 @@ class Incident:
         previous_technician = self._assigned_technician_id
         previous_status = self._move(Transition.ASSIGN, now)
         self._assigned_technician_id = technician.id
-        self._raise(IncidentAssigned(
-            occurred_at=now, actor_id=actor.id if actor else None, technician_id=technician.id,
-            technician_code=technician.display_code, technician_name=technician.full_name, reason=reason,
-            from_status=previous_status, previous_technician_id=previous_technician,
-        ))
+        self._raise(
+            IncidentAssigned(
+                occurred_at=now,
+                actor_id=actor.id if actor else None,
+                technician_id=technician.id,
+                technician_code=technician.display_code,
+                technician_name=technician.full_name,
+                reason=reason,
+                from_status=previous_status,
+                previous_technician_id=previous_technician,
+            )
+        )
 
     def acknowledge(self, actor: User, now: datetime) -> None:
         self._require_assignee(actor, "acknowledge")
@@ -440,8 +531,9 @@ class Incident:
         kind = CommentKind.NOTE if staff else CommentKind.COMMENT
         self._add_comment(actor, kind, body, internal, now)
         self._updated_at = now
-        self._raise(CommentAdded(occurred_at=now, actor_id=actor.id, kind=kind, is_internal=internal,
-                                 excerpt=body[:80]))
+        self._raise(
+            CommentAdded(occurred_at=now, actor_id=actor.id, kind=kind, is_internal=internal, excerpt=body[:80])
+        )
         return self._comments[-1]
 
     def update_details(
@@ -460,19 +552,24 @@ class Incident:
         knows whether priority must be recalculated."""
         if not self._state.accepts_updates:
             raise InvalidStateTransitionError(self.status.value, "update")
-        if not (self.is_reporter(actor) or self.is_assignee(actor)
-                or actor.has_permission(Permission.ASSIGN_INCIDENTS)):
+        if not (
+            self.is_reporter(actor) or self.is_assignee(actor) or actor.has_permission(Permission.ASSIGN_INCIDENTS)
+        ):
             raise UnauthorizedOperationError(f"You cannot update {self.number}")
         if category is not None and not actor.has_permission(Permission.VIEW_ALL_INCIDENTS):
             raise UnauthorizedOperationError("Only support staff can re-categorise incidents")
         candidate = {
             "title": self._valid_text(title, "title", TITLE_LIMITS) if title is not None else None,
-            "description": (self._valid_text(description, "description", DESCRIPTION_LIMITS)
-                            if description is not None else None),
+            "description": (
+                self._valid_text(description, "description", DESCRIPTION_LIMITS) if description is not None else None
+            ),
             "impact": require_range(impact, "impact", 1, 4) if impact is not None else None,
             "urgency": require_range(urgency, "urgency", 1, 4) if urgency is not None else None,
-            "affected_users": (require_range(affected_users, "affected_users", 1, MAX_AFFECTED_USERS)
-                               if affected_users is not None else None),
+            "affected_users": (
+                require_range(affected_users, "affected_users", 1, MAX_AFFECTED_USERS)
+                if affected_users is not None
+                else None
+            ),
             "category_id": category.id if category is not None else None,
         }
         changed = tuple(k for k, v in candidate.items() if v is not None and v != getattr(self, f"_{k}"))
@@ -493,8 +590,15 @@ class Incident:
         self._sla = sla
         self._updated_at = now
         if old != result.priority:
-            self._raise(PriorityChanged(occurred_at=now, actor_id=actor.id if actor else None,
-                                        old_priority=old, new_priority=result.priority, score=result.score))
+            self._raise(
+                PriorityChanged(
+                    occurred_at=now,
+                    actor_id=actor.id if actor else None,
+                    old_priority=old,
+                    new_priority=result.priority,
+                    score=result.score,
+                )
+            )
         return True
 
     def check_sla(self, now: datetime) -> bool:
@@ -510,8 +614,12 @@ class Incident:
             raise InvalidInputError("Escalation level can only increase")
         self._escalation_level = level
         self._updated_at = now
-        self._raise(IncidentEscalated(occurred_at=now, level=level, level_name=level_name,
-                                      recipient_ids=recipient_ids))
+        self._raise(IncidentEscalated(occurred_at=now, level=level, level_name=level_name, recipient_ids=recipient_ids))
+
+    def note_similar_incidents(self, matches: tuple[tuple[str, float, str], ...], now: datetime) -> None:
+        """Record what duplicate detection found (number, similarity, link type)."""
+        if matches:
+            self._raise(RelatedIncidentsDetected(occurred_at=now, matches=matches))
 
     def link_to_parent(self, parent_id: int) -> None:
         if parent_id == self._id:

@@ -8,8 +8,9 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 @router.post("/register", response_model=UserOut, status_code=status.HTTP_201_CREATED)
 def register(body: RegisterRequest, container: Container) -> UserOut:
-    user = container.auth.register_employee(email=body.email, full_name=body.full_name, password=body.password,
-                                            phone=body.phone, department=body.department)
+    user = container.auth.register_employee(
+        email=body.email, full_name=body.full_name, password=body.password, phone=body.phone, department=body.department
+    )
     return UserOut.from_domain(user)
 
 

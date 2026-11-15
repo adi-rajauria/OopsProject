@@ -1,5 +1,4 @@
-REGISTER = {"email": "riya@corp.test", "full_name": "Riya Sharma", "password": "Secret123",
-            "department": "Finance"}
+REGISTER = {"email": "riya@corp.test", "full_name": "Riya Sharma", "password": "Secret123", "department": "Finance"}
 
 
 def register_and_login(client) -> str:
@@ -50,9 +49,11 @@ def test_invalid_input_and_duplicate_registration(client):
 
 
 def test_cors_allows_only_the_frontend_origin(client):
-    allowed = client.options("/api/auth/login", headers={"Origin": "http://localhost:5173",
-                                                         "Access-Control-Request-Method": "POST"})
-    denied = client.options("/api/auth/login", headers={"Origin": "http://evil.example",
-                                                        "Access-Control-Request-Method": "POST"})
+    allowed = client.options(
+        "/api/auth/login", headers={"Origin": "http://localhost:5173", "Access-Control-Request-Method": "POST"}
+    )
+    denied = client.options(
+        "/api/auth/login", headers={"Origin": "http://evil.example", "Access-Control-Request-Method": "POST"}
+    )
     assert allowed.headers.get("access-control-allow-origin") == "http://localhost:5173"
     assert "access-control-allow-origin" not in denied.headers

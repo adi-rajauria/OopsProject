@@ -37,8 +37,15 @@ class NotificationDispatcher(EventObserver):
         self._policy = policy
 
     def interests(self) -> tuple[type[DomainEvent], ...]:
-        return (IncidentCreated, IncidentAssigned, PriorityChanged, IncidentTransitioned,
-                SLAWarningRaised, SLAViolated, IncidentEscalated)
+        return (
+            IncidentCreated,
+            IncidentAssigned,
+            PriorityChanged,
+            IncidentTransitioned,
+            SLAWarningRaised,
+            SLAViolated,
+            IncidentEscalated,
+        )
 
     def handle(self, event: DomainEvent) -> None:
         if not isinstance(event, IncidentEvent) or event.incident is None:
@@ -59,9 +66,14 @@ class NotificationDispatcher(EventObserver):
             channel = self._channels.get(channel_type)
             if channel is None or not channel.can_reach(recipient):
                 continue
-            notification = NotificationFactory.create(recipient=recipient, channel=channel_type, type=ntype,
-                                                      incident=event.incident, detail=detail,
-                                                      now=event.occurred_at)
+            notification = NotificationFactory.create(
+                recipient=recipient,
+                channel=channel_type,
+                type=ntype,
+                incident=event.incident,
+                detail=detail,
+                now=event.occurred_at,
+            )
             try:
                 channel.deliver(notification, recipient)
                 notification.mark_delivered()
@@ -80,8 +92,11 @@ class NotificationDispatcher(EventObserver):
                 yield ref.reporter_id, NotificationType.INCIDENT_CREATED, "You can track progress on its page."
             case IncidentAssigned():
                 yield event.technician_id, NotificationType.INCIDENT_ASSIGNED, event.reason
-                yield (ref.reporter_id, NotificationType.TECHNICIAN_ASSIGNED,
-                       f"{event.technician_name} is now handling '{ref.title}'.")
+                yield (
+                    ref.reporter_id,
+                    NotificationType.TECHNICIAN_ASSIGNED,
+                    f"{event.technician_name} is now handling '{ref.title}'.",
+                )
             case PriorityChanged():
                 yield ref.reporter_id, NotificationType.PRIORITY_CHANGED, event.describe()
                 yield ref.assignee_id, NotificationType.PRIORITY_CHANGED, event.describe()

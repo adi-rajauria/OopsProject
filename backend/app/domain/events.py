@@ -76,11 +76,13 @@ class IncidentCreated(IncidentEvent):
 @dataclass(frozen=True, kw_only=True)
 class IncidentClassified(IncidentEvent):
     category_code: str
+    note: str = ""
 
     action = "CLASSIFIED"
 
     def describe(self) -> str:
-        return f"Incident classified as {self.category_code}"
+        suffix = f" ({self.note})" if self.note else ""
+        return f"Incident classified as {self.category_code}{suffix}"
 
     @property
     def previous_state(self) -> str:
@@ -113,7 +115,9 @@ class PriorityChanged(IncidentEvent):
 
     def describe(self) -> str:
         old = self.old_priority.value if self.old_priority else "-"
-        return f"Priority changed from {old} to {self.new_priority.value} (score {self.score}); SLA deadlines recalculated"
+        return (
+            f"Priority changed from {old} to {self.new_priority.value} (score {self.score}); SLA deadlines recalculated"
+        )
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -237,6 +241,20 @@ class IncidentEscalated(IncidentEvent):
 
 
 @dataclass(frozen=True, kw_only=True)
+class RelatedIncidentsDetected(IncidentEvent):
+    matches: tuple[tuple[str, float, str], ...]  # (incident number, similarity, link type)
+
+    action = "RELATED_DETECTED"
+
+    def describe(self) -> str:
+        parts = [
+            f"{'possible duplicate of' if kind == 'DUPLICATE' else 'related to'} {number} ({score:.2f})"
+            for number, score, kind in self.matches
+        ]
+        return "Similar incidents detected: " + "; ".join(parts)
+
+
+@dataclass(frozen=True, kw_only=True)
 class FeedbackSubmitted(IncidentEvent):
     rating: int
 
@@ -268,6 +286,21 @@ class SettingChanged(DomainEvent):
 
     def describe(self) -> str:
         return f"Setting '{self.key}' changed from {self.old_value!r} to {self.new_value!r}"
+
+
+@dataclass(frozen=True, kw_only=True)
+class AdministrativeChange(DomainEvent):
+    """Any configuration / user-management change made by an administrator."""
+
+    change: str  # e.g. SERVICE_CREATED, USER_DEACTIVATED
+    summary: str
+
+    @property
+    def action(self) -> str:
+        return self.change
+
+    def describe(self) -> str:
+        return self.summary
 
 
 class EventObserver(ABC):

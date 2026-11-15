@@ -65,9 +65,15 @@ class ITService:
     def assign_id(self, new_id: int) -> None:
         self._id = new_id
 
-    def update(self, *, name: str | None = None, business_criticality: int | None = None,
-               owner_team: str | None = None, description: str | None = None,
-               is_active: bool | None = None) -> None:
+    def update(
+        self,
+        *,
+        name: str | None = None,
+        business_criticality: int | None = None,
+        owner_team: str | None = None,
+        description: str | None = None,
+        is_active: bool | None = None,
+    ) -> None:
         if name is not None:
             self._name = require_text(name, "name", min_len=2, max_len=100)
         if business_criticality is not None:

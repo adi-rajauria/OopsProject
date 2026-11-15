@@ -20,8 +20,11 @@ from tests.conftest import START
 
 
 def notifications_for(world, user, channel=None):
-    return [(n.type, n.channel) for n in world.uow.notifications.list_all()
-            if n.recipient_id == user.id and (channel is None or n.channel == channel)]
+    return [
+        (n.type, n.channel)
+        for n in world.uow.notifications.list_all()
+        if n.recipient_id == user.id and (channel is None or n.channel == channel)
+    ]
 
 
 def work_to_resolved(world, incident):
@@ -47,7 +50,10 @@ def test_report_classifies_prioritises_applies_sla_and_assigns(world):
 
     tech_msgs = notifications_for(world, world.tech("t_app"))
     assert {c for t, c in tech_msgs if t is NotificationType.INCIDENT_ASSIGNED} == {
-        ChannelType.IN_APP, ChannelType.EMAIL, ChannelType.SMS}  # P1 => SMS as well
+        ChannelType.IN_APP,
+        ChannelType.EMAIL,
+        ChannelType.SMS,
+    }  # P1 => SMS as well
     assert (NotificationType.TECHNICIAN_ASSIGNED, ChannelType.EMAIL) in notifications_for(world, world.employee)
     assert world.smtp.outbox and world.sms.sent
 
@@ -68,13 +74,24 @@ def test_full_lifecycle_with_info_request_feedback_and_closure(world):
     assert closed.status is IncidentStatus.CLOSED and closed.closed_at is not None
     assert world.uow.feedback.get_for_incident(incident.id).rating == 4
     states = [(r.previous_state, r.new_state) for r in world.uow.audit.trail_for(incident.id).state_changes()]
-    assert states == [(None, "NEW"), ("NEW", "CLASSIFIED"), ("CLASSIFIED", "ASSIGNED"),
-                      ("ASSIGNED", "ACKNOWLEDGED"), ("ACKNOWLEDGED", "IN_PROGRESS"),
-                      ("IN_PROGRESS", "PENDING_INFO"), ("PENDING_INFO", "IN_PROGRESS"),
-                      ("IN_PROGRESS", "RESOLVED"), ("RESOLVED", "VERIFIED"), ("VERIFIED", "CLOSED")]
+    assert states == [
+        (None, "NEW"),
+        ("NEW", "CLASSIFIED"),
+        ("CLASSIFIED", "ASSIGNED"),
+        ("ASSIGNED", "ACKNOWLEDGED"),
+        ("ACKNOWLEDGED", "IN_PROGRESS"),
+        ("IN_PROGRESS", "PENDING_INFO"),
+        ("PENDING_INFO", "IN_PROGRESS"),
+        ("IN_PROGRESS", "RESOLVED"),
+        ("RESOLVED", "VERIFIED"),
+        ("VERIFIED", "CLOSED"),
+    ]
     employee_types = {t for t, _ in notifications_for(world, emp)}
-    assert {NotificationType.INFO_REQUESTED, NotificationType.INCIDENT_RESOLVED,
-            NotificationType.INCIDENT_CLOSED} <= employee_types
+    assert {
+        NotificationType.INFO_REQUESTED,
+        NotificationType.INCIDENT_RESOLVED,
+        NotificationType.INCIDENT_CLOSED,
+    } <= employee_types
     assert [c.kind.value for c in closed.comments] == ["NOTE", "INFO_REQUEST", "INFO_REPLY", "RESOLUTION"]
 
 
@@ -192,8 +209,7 @@ def test_changing_urgency_recalculates_priority_and_rebases_deadlines(world):
     assert updated.priority is Priority.P2 and updated.priority_score == 24
     assert updated.sla.resolution_due_at == START + timedelta(minutes=120)  # from creation, not from edit
     assert "PRIORITY_CHANGED" in world.uow.audit.trail_for(incident.id).actions()
-    assert (NotificationType.PRIORITY_CHANGED, ChannelType.IN_APP) in notifications_for(
-        world, world.tech("t_app"))
+    assert (NotificationType.PRIORITY_CHANGED, ChannelType.IN_APP) in notifications_for(world, world.tech("t_app"))
 
 
 def test_assignment_strategy_can_be_switched_at_runtime_by_admin_only(world):

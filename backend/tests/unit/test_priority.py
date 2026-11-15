@@ -16,8 +16,16 @@ def test_score_is_impact_times_urgency_times_criticality():
 
 @pytest.mark.parametrize(
     ("score", "expected"),
-    [(64, Priority.P1), (32, Priority.P1), (31.99, Priority.P2), (16, Priority.P2),
-     (15.99, Priority.P3), (6, Priority.P3), (5.99, Priority.P4), (1, Priority.P4)],
+    [
+        (64, Priority.P1),
+        (32, Priority.P1),
+        (31.99, Priority.P2),
+        (16, Priority.P2),
+        (15.99, Priority.P3),
+        (6, Priority.P3),
+        (5.99, Priority.P4),
+        (1, Priority.P4),
+    ],
 )
 def test_priority_band_boundaries(score, expected):
     assert PriorityThresholds().band(score) is expected
@@ -42,9 +50,12 @@ def test_score_is_capped_at_64():
 
 @pytest.mark.parametrize(
     "kwargs",
-    [dict(impact=0, urgency=1, business_criticality=1), dict(impact=1, urgency=5, business_criticality=1),
-     dict(impact=True, urgency=1, business_criticality=1), dict(impact=1, urgency=1, business_criticality=1,
-                                                                affected_users=0)],
+    [
+        dict(impact=0, urgency=1, business_criticality=1),
+        dict(impact=1, urgency=5, business_criticality=1),
+        dict(impact=True, urgency=1, business_criticality=1),
+        dict(impact=1, urgency=1, business_criticality=1, affected_users=0),
+    ],
 )
 def test_invalid_priority_input_is_rejected(kwargs):
     with pytest.raises(InvalidInputError):

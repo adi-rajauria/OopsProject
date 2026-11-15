@@ -54,12 +54,47 @@ alembic upgrade head
 uvicorn app.main:create_app --factory --reload
 ```
 
-## 5. Tests
+## 5. Demo data
 
 ```bash
 cd backend
-.venv/bin/pytest                                   # SQLite in-memory, no setup needed
-ITSM_TEST_DATABASE_URL=postgresql+psycopg://<user>@localhost:5432/itsm_test .venv/bin/pytest tests/api
+.venv/bin/python -m scripts.seed            # refuses if data already exists
+.venv/bin/python -m scripts.seed --reset    # wipes ALL data, then seeds
+```
+
+The seeder replays two weeks of history through the real services: 18 users, 11 services with dependencies, 9 categories,
+7 SLA policies and 42 incidents in every state, with SLA violations, near-duplicate links, escalations and feedback.
+Times are relative to "now", so re-seed shortly before a demo (open P1s keep escalating as real time passes).
+
+**All demo accounts use the password `Demo@1234`.**
+
+| Role | Email | Name | Notes |
+|---|---|---|---|
+| Administrator | admin@itsm.demo | Ada Sharma | System Admin |
+| Administrator | ops@itsm.demo | Omar Siddiqui | System Admin |
+| Administrator | manager@itsm.demo | Ravi Menon | IT Manager (last escalation level) |
+| Technician | priya@itsm.demo | Priya Nair | Team lead, Apps: APPLICATION, SOFTWARE, DATABASE |
+| Technician | arjun@itsm.demo | Arjun Verma | Apps: APPLICATION, CLOUD |
+| Technician | kabir@itsm.demo | Kabir Rao | Team lead, Infra: NETWORK, SECURITY |
+| Technician | meera@itsm.demo | Meera Iyer | Infra: NETWORK, HARDWARE |
+| Technician | tom@itsm.demo | Tom D'Souza | Infra: HARDWARE, SOFTWARE (no phone: no SMS) |
+| Technician | dev@itsm.demo | Dev Malhotra | Team lead, Platform: DATABASE, STORAGE, CLOUD |
+| Technician | lina@itsm.demo | Lina Fernandes | Platform: STORAGE, CLOUD |
+| Technician | sana@itsm.demo | Sana Qureshi | Identity: AUTHENTICATION, SECURITY |
+| Employee | riya@itsm.demo | Riya Kapoor | Finance (reported the payment outage) |
+| Employee | aman@itsm.demo | Aman Gupta | Sales |
+| Employee | neha@itsm.demo | Neha Joshi | HR |
+| Employee | vikram@itsm.demo | Vikram Singh | Operations |
+| Employee | zoya@itsm.demo | Zoya Khan | Marketing |
+| Employee | karan@itsm.demo | Karan Mehta | Engineering |
+| Employee | isha@itsm.demo | Isha Bose | Customer Support |
+
+## 6. Tests
+
+```bash
+cd backend
+.venv/bin/pytest                                   # 158 cases, SQLite in-memory, no setup needed (~20 s)
+ITSM_TEST_DATABASE_URL=postgresql+psycopg://<user>@localhost:5432/itsm_test .venv/bin/pytest tests/api   # same tests on PostgreSQL
 ```
 
 `ITSM_TEST_DATABASE_URL` drops and recreates every table in that database, so never point it at `itsm`.

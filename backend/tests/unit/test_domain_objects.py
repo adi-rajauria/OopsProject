@@ -16,8 +16,9 @@ from tests.conftest import START
 
 
 def make(role, **extra):
-    return UserFactory.create(role, id=1, email="Someone@Corp.test", full_name="Some One", password_hash="h",
-                              created_at=START, **extra)
+    return UserFactory.create(
+        role, id=1, email="Someone@Corp.test", full_name="Some One", password_hash="h", created_at=START, **extra
+    )
 
 
 def test_user_factory_builds_the_right_subclass_and_normalises_email():
@@ -38,8 +39,8 @@ def test_permissions_are_polymorphic_and_revoked_when_deactivated():
 
 
 @pytest.mark.parametrize(
-    "kwargs", [dict(role="SUPERUSER"), dict(role=Role.EMPLOYEE, email="not-an-email"),
-               dict(role=Role.EMPLOYEE, full_name="x")],
+    "kwargs",
+    [dict(role="SUPERUSER"), dict(role=Role.EMPLOYEE, email="not-an-email"), dict(role=Role.EMPLOYEE, full_name="x")],
 )
 def test_invalid_user_input_is_rejected(kwargs):
     base = dict(email="ok@corp.test", full_name="Valid Name", password_hash="h", created_at=START)
@@ -53,12 +54,22 @@ def test_incident_factory_rejects_invalid_incidents():
     reporter = make(Role.EMPLOYEE)
     service = ITService(id=1, code="PAY", name="Payments", business_criticality=4)
     with pytest.raises(InvalidIncidentError):
-        IncidentFactory.create(reporter, NewIncidentData("Hi", "too short title test", 1, 2, 2), service,
-                               suggested_category_id=None, now=START)
+        IncidentFactory.create(
+            reporter,
+            NewIncidentData("Hi", "too short title test", 1, 2, 2),
+            service,
+            suggested_category_id=None,
+            now=START,
+        )
     service.update(is_active=False)
     with pytest.raises(InvalidIncidentError):
-        IncidentFactory.create(reporter, NewIncidentData("Payment down", "Nobody can pay anything", 1, 2, 2),
-                               service, suggested_category_id=None, now=START)
+        IncidentFactory.create(
+            reporter,
+            NewIncidentData("Payment down", "Nobody can pay anything", 1, 2, 2),
+            service,
+            suggested_category_id=None,
+            now=START,
+        )
 
 
 def test_event_bus_dispatches_by_event_class_hierarchy():
@@ -71,8 +82,15 @@ def test_event_bus_dispatches_by_event_class_hierarchy():
 
 
 def _notification() -> Notification:
-    return Notification(id=None, recipient_id=1, channel=ChannelType.EMAIL, type=NotificationType.SLA_VIOLATED,
-                        title="t", body="b", created_at=START)
+    return Notification(
+        id=None,
+        recipient_id=1,
+        channel=ChannelType.EMAIL,
+        type=NotificationType.SLA_VIOLATED,
+        title="t",
+        body="b",
+        created_at=START,
+    )
 
 
 def test_adapters_translate_provider_failures_into_notification_delivery_error():
@@ -93,4 +111,7 @@ def test_channel_policy_uses_sms_only_for_urgent_events():
     assert ChannelType.SMS in policy.channels_for(NotificationType.INCIDENT_ASSIGNED, Priority.P1)
     assert ChannelType.SMS not in policy.channels_for(NotificationType.INCIDENT_ASSIGNED, Priority.P3)
     assert policy.channels_for(NotificationType.SLA_VIOLATED, Priority.P4) == [
-        ChannelType.IN_APP, ChannelType.EMAIL, ChannelType.SMS]
+        ChannelType.IN_APP,
+        ChannelType.EMAIL,
+        ChannelType.SMS,
+    ]

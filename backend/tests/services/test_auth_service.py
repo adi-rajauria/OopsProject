@@ -17,8 +17,10 @@ def test_register_login_and_authenticate(world):
     assert user.role is Role.EMPLOYEE and user.email == "new.user@corp.test"
     result = auth.login("new.user@corp.test", "Secret123")
     assert auth.authenticate(result.access_token) == user
-    assert world.uow.audit.list_recent(action="USER_CREATED")[0].description == \
-        "Employee account new.user@corp.test created"
+    assert (
+        world.uow.audit.list_recent(action="USER_CREATED")[0].description
+        == "Employee account new.user@corp.test created"
+    )
 
 
 @pytest.mark.parametrize("password", ["short1", "lettersonly", "12345678"])

@@ -21,11 +21,13 @@ PASSWORD_MIN, PASSWORD_MAX = 8, 128
 
 def validate_password(password: str) -> str:
     if not PASSWORD_MIN <= len(password or "") <= PASSWORD_MAX:
-        raise InvalidInputError(f"Password must be {PASSWORD_MIN}-{PASSWORD_MAX} characters",
-                                details={"field": "password"})
+        raise InvalidInputError(
+            f"Password must be {PASSWORD_MIN}-{PASSWORD_MAX} characters", details={"field": "password"}
+        )
     if not (re.search(r"[A-Za-z]", password) and re.search(r"\d", password)):
-        raise InvalidInputError("Password must contain at least one letter and one digit",
-                                details={"field": "password"})
+        raise InvalidInputError(
+            "Password must contain at least one letter and one digit", details={"field": "password"}
+        )
     return password
 
 
@@ -36,8 +38,9 @@ class LoginResult:
 
 
 class AuthService:
-    def __init__(self, uow: UnitOfWork, hasher: PasswordHasher, tokens: TokenService, clock: Clock,
-                 bus: EventBus) -> None:
+    def __init__(
+        self, uow: UnitOfWork, hasher: PasswordHasher, tokens: TokenService, clock: Clock, bus: EventBus
+    ) -> None:
         self._uow = uow
         self._hasher = hasher
         self._tokens = tokens
@@ -45,24 +48,55 @@ class AuthService:
         self._bus = bus
         self._dummy_hash: str | None = None
 
-    def register_employee(self, *, email: str, full_name: str, password: str, phone: str | None = None,
-                          department: str | None = None) -> User:
+    def register_employee(
+        self, *, email: str, full_name: str, password: str, phone: str | None = None, department: str | None = None
+    ) -> User:
         """Self-registration always creates an Employee; staff accounts are created by admins."""
-        return self.create_account(Role.EMPLOYEE, email=email, full_name=full_name, password=password,
-                                   phone=phone, department=department, actor_id=None)
+        return self.create_account(
+            Role.EMPLOYEE,
+            email=email,
+            full_name=full_name,
+            password=password,
+            phone=phone,
+            department=department,
+            actor_id=None,
+        )
 
-    def create_account(self, role: Role, *, email: str, full_name: str, password: str, actor_id: int | None,
-                       phone: str | None = None, department: str | None = None, **role_specific) -> User:
+    def create_account(
+        self,
+        role: Role,
+        *,
+        email: str,
+        full_name: str,
+        password: str,
+        actor_id: int | None,
+        phone: str | None = None,
+        department: str | None = None,
+        **role_specific,
+    ) -> User:
         email = require_email(email)
         if self._uow.users.get_by_email(email) is not None:
             raise EmailAlreadyRegisteredError(email)
         user = UserFactory.create(
-            role, email=email, full_name=full_name, password_hash=self._hasher.hash(validate_password(password)),
-            created_at=self._clock.now(), phone=phone, department=department, **role_specific,
+            role,
+            email=email,
+            full_name=full_name,
+            password_hash=self._hasher.hash(validate_password(password)),
+            created_at=self._clock.now(),
+            phone=phone,
+            department=department,
+            **role_specific,
         )
         self._uow.users.add(user)
-        self._bus.publish(UserRegistered(occurred_at=self._clock.now(), actor_id=actor_id or user.id,
-                                         user_id=user.id, role=user.role.value, email=user.email))
+        self._bus.publish(
+            UserRegistered(
+                occurred_at=self._clock.now(),
+                actor_id=actor_id or user.id,
+                user_id=user.id,
+                role=user.role.value,
+                email=user.email,
+            )
+        )
         self._uow.commit()
         return user
 

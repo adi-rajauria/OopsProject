@@ -17,15 +17,17 @@ class ChannelSelectionPolicy(ABC):
 class DefaultChannelSelectionPolicy(ChannelSelectionPolicy):
     """In-app always; e-mail for events a person must act on; SMS only when it is urgent."""
 
-    EMAIL_TYPES = frozenset({
-        NotificationType.INCIDENT_ASSIGNED,
-        NotificationType.TECHNICIAN_ASSIGNED,
-        NotificationType.INFO_REQUESTED,
-        NotificationType.INCIDENT_RESOLVED,
-        NotificationType.INCIDENT_CLOSED,
-        NotificationType.SLA_VIOLATED,
-        NotificationType.ESCALATED,
-    })
+    EMAIL_TYPES = frozenset(
+        {
+            NotificationType.INCIDENT_ASSIGNED,
+            NotificationType.TECHNICIAN_ASSIGNED,
+            NotificationType.INFO_REQUESTED,
+            NotificationType.INCIDENT_RESOLVED,
+            NotificationType.INCIDENT_CLOSED,
+            NotificationType.SLA_VIOLATED,
+            NotificationType.ESCALATED,
+        }
+    )
     SMS_TYPES = frozenset({NotificationType.SLA_VIOLATED, NotificationType.ESCALATED})
 
     def channels_for(self, notification_type: NotificationType, priority: Priority | None) -> list[ChannelType]:

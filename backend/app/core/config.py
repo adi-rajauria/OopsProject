@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     jwt_expiry_minutes: int = Field(60, ge=5, le=24 * 60)
     cors_origins: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
     sla_check_interval_seconds: int = Field(60, ge=5)
+    sla_monitor_enabled: bool = True
     simulate_email_failure: bool = False
     simulate_sms_failure: bool = False
     log_level: str = "INFO"

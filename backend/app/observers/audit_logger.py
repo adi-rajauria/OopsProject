@@ -18,16 +18,18 @@ class AuditLogger(EventObserver):
 
     def handle(self, event: DomainEvent) -> None:
         incident_id = event.incident.id if isinstance(event, IncidentEvent) and event.incident else None
-        self._uow.audit.add(AuditRecord(
-            created_at=event.occurred_at,
-            action=event.action,
-            description=event.describe(),
-            actor_id=event.actor_id,
-            actor_name=self._actor_name(event.actor_id),
-            incident_id=incident_id,
-            previous_state=event.previous_state,
-            new_state=event.new_state,
-        ))
+        self._uow.audit.add(
+            AuditRecord(
+                created_at=event.occurred_at,
+                action=event.action,
+                description=event.describe(),
+                actor_id=event.actor_id,
+                actor_name=self._actor_name(event.actor_id),
+                incident_id=incident_id,
+                previous_state=event.previous_state,
+                new_state=event.new_state,
+            )
+        )
 
     def _actor_name(self, actor_id: int | None) -> str:
         if actor_id is None:

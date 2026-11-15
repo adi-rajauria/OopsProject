@@ -3,24 +3,27 @@
 import functools
 from collections.abc import Callable
 from dataclasses import replace
+from datetime import datetime
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import Select, func, or_, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.domain.audit import AuditRecord, AuditTrail
 from app.domain.category import Category
-from app.domain.clock import Clock, SystemClock
-from app.domain.enums import ACTIVE_WORK_STATUSES, ChannelType, IncidentStatus, Role, SLATarget
+from app.domain.clock import Clock, SystemClock, ensure_utc
+from app.domain.enums import ACTIVE_WORK_STATUSES, ChannelType, IncidentStatus, LinkType, Role, SLATarget
 from app.domain.exceptions import PersistenceError
 from app.domain.feedback import Feedback
 from app.domain.incident import Incident
+from app.domain.links import IncidentLink
 from app.domain.notification import Notification
 from app.domain.repositories import (
     AuditRepository,
     CategoryRepository,
     FeedbackRepository,
+    IncidentLinkRepository,
     IncidentRepository,
     NotificationRepository,
     ServiceRepository,
@@ -30,6 +33,7 @@ from app.domain.repositories import (
     UnitOfWork,
     UserRepository,
 )
+from app.domain.search import SearchCriteria, SearchPage, SortOrder
 from app.domain.service import ITService
 from app.domain.sla import SLAPolicy, SLAViolationRecord
 from app.domain.users import User
@@ -38,6 +42,7 @@ from app.repositories.orm import (
     AuditRecordRow,
     CategoryRow,
     FeedbackRow,
+    IncidentLinkRow,
     IncidentRow,
     NotificationRow,
     ServiceRow,
@@ -59,8 +64,9 @@ def translate_db_errors[**P, R](method: Callable[P, R]) -> Callable[P, R]:
         try:
             return method(*args, **kwargs)
         except SQLAlchemyError as exc:
-            raise PersistenceError("The database is unavailable or rejected the operation",
-                                   details={"reason": type(exc).__name__}) from exc
+            raise PersistenceError(
+                "The database is unavailable or rejected the operation", details={"reason": type(exc).__name__}
+            ) from exc
 
     return wrapper
 
@@ -144,18 +150,128 @@ class SqlIncidentRepository(_SqlRepository, IncidentRepository):
         stmt = select(IncidentRow).where(IncidentRow.status != IncidentStatus.CLOSED.value).order_by(IncidentRow.id)
         return [mappers.incident_to_domain(r) for r in self._session.scalars(stmt)]
 
+    def list_all(self) -> list[Incident]:
+        return [
+            mappers.incident_to_domain(r) for r in self._session.scalars(select(IncidentRow).order_by(IncidentRow.id))
+        ]
+
+    def search(self, criteria: SearchCriteria) -> SearchPage:
+        stmt = self._filtered(criteria)
+        total = self._session.scalar(select(func.count()).select_from(stmt.subquery())) or 0
+        stmt = self._ordered(stmt, criteria.sort).offset(criteria.offset).limit(criteria.page_size)
+        items = [mappers.incident_to_domain(r) for r in self._session.scalars(stmt)]
+        return SearchPage(items, total, criteria.page, criteria.page_size)
+
+    @staticmethod
+    def _filtered(c: SearchCriteria) -> Select:
+        """SQL translation of SearchCriteria.matches()."""
+        r = IncidentRow
+        conditions = []
+        if c.incident_id is not None:
+            conditions.append(r.id == c.incident_id)
+        if c.created_from is not None:
+            conditions.append(r.created_at >= c.created_from)
+        if c.created_to is not None:
+            conditions.append(r.created_at <= c.created_to)
+        if c.statuses:
+            conditions.append(r.status.in_([s.value for s in c.statuses]))
+        if c.priorities:
+            conditions.append(r.priority.in_([p.value for p in c.priorities]))
+        if c.category_ids:
+            conditions.append(r.category_id.in_(c.category_ids))
+        if c.service_ids:
+            conditions.append(r.service_id.in_(c.service_ids))
+        if c.technician_id is not None:
+            conditions.append(r.assigned_technician_id == c.technician_id)
+        if c.unassigned_only:
+            conditions.append(r.assigned_technician_id.is_(None))
+        if c.sla_statuses:
+            conditions.append(r.sla_status.in_([s.value for s in c.sla_statuses]))
+        if c.reporter_id is not None:
+            conditions.append(r.reporter_id == c.reporter_id)
+        if c.open_only:
+            conditions.append(r.status.not_in(RESOLVED_VALUES))
+        if c.text_term:
+            conditions.append(
+                or_(
+                    func.lower(r.title).contains(c.text_term, autoescape=True),
+                    func.lower(r.description).contains(c.text_term, autoescape=True),
+                )
+            )
+        return select(r).where(*conditions)
+
+    @staticmethod
+    def _ordered(stmt: Select, order: SortOrder) -> Select:
+        r = IncidentRow
+        match order:
+            case SortOrder.OLDEST:
+                return stmt.order_by(r.created_at, r.id)
+            case SortOrder.PRIORITY:
+                return stmt.order_by(r.priority.is_(None), r.priority, r.created_at.desc(), r.id.desc())
+            case SortOrder.RECENTLY_UPDATED:
+                return stmt.order_by(r.updated_at.desc(), r.id.desc())
+            case _:
+                return stmt.order_by(r.created_at.desc(), r.id.desc())
+
+    def recent_for_service(self, service_id: int, since: datetime) -> list[Incident]:
+        stmt = select(IncidentRow).where(
+            IncidentRow.service_id == service_id,
+            IncidentRow.created_at >= since,
+            IncidentRow.status != IncidentStatus.CLOSED.value,
+        )
+        return [mappers.incident_to_domain(r) for r in self._session.scalars(stmt.order_by(IncidentRow.id))]
+
     def active_counts_by_technician(self) -> dict[int, int]:
-        stmt = (select(IncidentRow.assigned_technician_id, func.count())
-                .where(IncidentRow.assigned_technician_id.is_not(None), IncidentRow.status.in_(ACTIVE_VALUES))
-                .group_by(IncidentRow.assigned_technician_id))
+        stmt = (
+            select(IncidentRow.assigned_technician_id, func.count())
+            .where(IncidentRow.assigned_technician_id.is_not(None), IncidentRow.status.in_(ACTIVE_VALUES))
+            .group_by(IncidentRow.assigned_technician_id)
+        )
         return {tech_id: n for tech_id, n in self._session.execute(stmt)}
 
     def resolved_counts_for_service(self, service_id: int) -> dict[int, int]:
-        stmt = (select(IncidentRow.assigned_technician_id, func.count())
-                .where(IncidentRow.service_id == service_id, IncidentRow.assigned_technician_id.is_not(None),
-                       IncidentRow.status.in_(RESOLVED_VALUES))
-                .group_by(IncidentRow.assigned_technician_id))
+        stmt = (
+            select(IncidentRow.assigned_technician_id, func.count())
+            .where(
+                IncidentRow.service_id == service_id,
+                IncidentRow.assigned_technician_id.is_not(None),
+                IncidentRow.status.in_(RESOLVED_VALUES),
+            )
+            .group_by(IncidentRow.assigned_technician_id)
+        )
         return {tech_id: n for tech_id, n in self._session.execute(stmt)}
+
+
+class SqlIncidentLinkRepository(_SqlRepository, IncidentLinkRepository):
+    def add(self, link: IncidentLink) -> IncidentLink:
+        self._session.add(
+            IncidentLinkRow(
+                incident_id=link.incident_id,
+                related_incident_id=link.related_incident_id,
+                similarity=link.similarity,
+                link_type=link.link_type.value,
+                created_at=link.created_at,
+            )
+        )
+        self._session.flush()
+        return link
+
+    def list_for(self, incident_id: int) -> list[IncidentLink]:
+        stmt = (
+            select(IncidentLinkRow)
+            .where(or_(IncidentLinkRow.incident_id == incident_id, IncidentLinkRow.related_incident_id == incident_id))
+            .order_by(IncidentLinkRow.similarity.desc())
+        )
+        return [
+            IncidentLink(
+                incident_id=r.incident_id,
+                related_incident_id=r.related_incident_id,
+                similarity=r.similarity,
+                link_type=LinkType(r.link_type),
+                created_at=ensure_utc(r.created_at),
+            )
+            for r in self._session.scalars(stmt)
+        ]
 
 
 class SqlServiceRepository(_SqlRepository, ServiceRepository):
@@ -247,12 +363,22 @@ class SqlAuditRepository(_SqlRepository, AuditRepository):
         return replace(record, id=row.id)
 
     def trail_for(self, incident_id: int) -> AuditTrail:
-        stmt = (select(AuditRecordRow).where(AuditRecordRow.incident_id == incident_id)
-                .order_by(AuditRecordRow.created_at, AuditRecordRow.id))
+        stmt = (
+            select(AuditRecordRow)
+            .where(AuditRecordRow.incident_id == incident_id)
+            .order_by(AuditRecordRow.created_at, AuditRecordRow.id)
+        )
         return AuditTrail(incident_id, (mappers.audit_to_domain(r) for r in self._session.scalars(stmt)))
 
-    def list_recent(self, *, limit: int = 100, offset: int = 0, incident_id: int | None = None,
-                    actor_id: int | None = None, action: str | None = None) -> list[AuditRecord]:
+    def list_recent(
+        self,
+        *,
+        limit: int = 100,
+        offset: int = 0,
+        incident_id: int | None = None,
+        actor_id: int | None = None,
+        action: str | None = None,
+    ) -> list[AuditRecord]:
         stmt = select(AuditRecordRow).order_by(AuditRecordRow.created_at.desc(), AuditRecordRow.id.desc())
         if incident_id is not None:
             stmt = stmt.where(AuditRecordRow.incident_id == incident_id)
@@ -279,10 +405,20 @@ class SqlNotificationRepository(_SqlRepository, NotificationRepository):
         mappers.notification_to_row(notification, self._row(NotificationRow, notification.id))
         self._session.flush()
 
-    def list_for_user(self, user_id: int, *, channel: ChannelType | None = ChannelType.IN_APP,
-                      unread_only: bool = False, limit: int = 50) -> list[Notification]:
-        stmt = (select(NotificationRow).where(NotificationRow.recipient_id == user_id)
-                .order_by(NotificationRow.created_at.desc(), NotificationRow.id.desc()).limit(limit))
+    def list_for_user(
+        self,
+        user_id: int,
+        *,
+        channel: ChannelType | None = ChannelType.IN_APP,
+        unread_only: bool = False,
+        limit: int = 50,
+    ) -> list[Notification]:
+        stmt = (
+            select(NotificationRow)
+            .where(NotificationRow.recipient_id == user_id)
+            .order_by(NotificationRow.created_at.desc(), NotificationRow.id.desc())
+            .limit(limit)
+        )
         if channel is not None:
             stmt = stmt.where(NotificationRow.channel == channel.value)
         if unread_only:
@@ -296,16 +432,23 @@ class SqlNotificationRepository(_SqlRepository, NotificationRepository):
 
 class SqlSLAViolationRepository(_SqlRepository, SLAViolationRepository):
     def add(self, violation: SLAViolationRecord) -> SLAViolationRecord:
-        row = SLAViolationRow(incident_id=violation.incident_id, target=violation.target.value,
-                              due_at=violation.due_at, detected_at=violation.detected_at,
-                              overdue_minutes=violation.overdue_minutes)
+        row = SLAViolationRow(
+            incident_id=violation.incident_id,
+            target=violation.target.value,
+            due_at=violation.due_at,
+            detected_at=violation.detected_at,
+            overdue_minutes=violation.overdue_minutes,
+        )
         self._session.add(row)
         self._session.flush()
         return replace(violation, id=row.id)
 
     def exists(self, incident_id: int, target: SLATarget) -> bool:
-        stmt = select(func.count()).select_from(SLAViolationRow).where(
-            SLAViolationRow.incident_id == incident_id, SLAViolationRow.target == target.value)
+        stmt = (
+            select(func.count())
+            .select_from(SLAViolationRow)
+            .where(SLAViolationRow.incident_id == incident_id, SLAViolationRow.target == target.value)
+        )
         return bool(self._session.scalar(stmt))
 
     def list(self, *, limit: int = 200) -> list[SLAViolationRecord]:
@@ -315,8 +458,13 @@ class SqlSLAViolationRepository(_SqlRepository, SLAViolationRepository):
 
 class SqlFeedbackRepository(_SqlRepository, FeedbackRepository):
     def add(self, feedback: Feedback) -> Feedback:
-        row = FeedbackRow(incident_id=feedback.incident_id, employee_id=feedback.employee_id,
-                          rating=feedback.rating, comment=feedback.comment, created_at=feedback.created_at)
+        row = FeedbackRow(
+            incident_id=feedback.incident_id,
+            employee_id=feedback.employee_id,
+            rating=feedback.rating,
+            comment=feedback.comment,
+            created_at=feedback.created_at,
+        )
         self._session.add(row)
         self._session.flush()
         return replace(feedback, id=row.id)
@@ -345,9 +493,11 @@ class SqlSettingsRepository(_SqlRepository, SettingsRepository):
 
 class SqlAlchemyUnitOfWork(UnitOfWork):
     def __init__(self, session: Session, clock: Clock | None = None) -> None:
+        super().__init__()
         self._session = session
         self.users = SqlUserRepository(session)
         self.incidents = SqlIncidentRepository(session, clock or SystemClock())
+        self.links = SqlIncidentLinkRepository(session)
         self.services = SqlServiceRepository(session)
         self.categories = SqlCategoryRepository(session)
         self.sla_policies = SqlSLAPolicyRepository(session)
@@ -358,12 +508,12 @@ class SqlAlchemyUnitOfWork(UnitOfWork):
         self.settings = SqlSettingsRepository(session)
 
     @translate_db_errors
-    def commit(self) -> None:
+    def _commit(self) -> None:
         try:
             self._session.commit()
         except SQLAlchemyError:
             self._session.rollback()
             raise
 
-    def rollback(self) -> None:
+    def _rollback(self) -> None:
         self._session.rollback()

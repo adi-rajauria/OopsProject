@@ -31,18 +31,30 @@ from app.repositories.orm import (
 
 # --- users ---------------------------------------------------------------------------------
 
+
 def user_to_domain(row: UserRow) -> User:
     profile = None
     if row.technician_profile is not None:
         p = row.technician_profile
         profile = TechnicianProfile(
-            skills=frozenset(p.skills or ()), experience_years=p.experience_years, max_workload=p.max_workload,
-            is_available=p.is_available, is_team_lead=p.is_team_lead, team=p.team,
+            skills=frozenset(p.skills or ()),
+            experience_years=p.experience_years,
+            max_workload=p.max_workload,
+            is_available=p.is_available,
+            is_team_lead=p.is_team_lead,
+            team=p.team,
         )
     return UserFactory.create(
-        row.role, id=row.id, email=row.email, full_name=row.full_name, password_hash=row.password_hash,
-        created_at=ensure_utc(row.created_at), phone=row.phone, department=row.department,
-        is_active=row.is_active, profile=profile,
+        row.role,
+        id=row.id,
+        email=row.email,
+        full_name=row.full_name,
+        password_hash=row.password_hash,
+        created_at=ensure_utc(row.created_at),
+        phone=row.phone,
+        department=row.department,
+        is_active=row.is_active,
+        profile=profile,
         admin_level=AdminLevel(row.admin_level) if row.admin_level else None,
     )
 
@@ -72,10 +84,16 @@ def user_to_row(user: User, row: UserRow) -> UserRow:
 
 # --- services / categories / SLA policies --------------------------------------------------
 
+
 def service_to_domain(row: ServiceRow) -> ITService:
     return ITService(
-        id=row.id, code=row.code, name=row.name, business_criticality=row.business_criticality,
-        owner_team=row.owner_team, description=row.description or "", is_active=row.is_active,
+        id=row.id,
+        code=row.code,
+        name=row.name,
+        business_criticality=row.business_criticality,
+        owner_team=row.owner_team,
+        description=row.description or "",
+        is_active=row.is_active,
         depends_on={d.depends_on_service_id for d in row.dependencies},
     )
 
@@ -94,8 +112,9 @@ def service_to_row(service: ITService, row: ServiceRow) -> ServiceRow:
 
 
 def category_to_domain(row: CategoryRow) -> Category:
-    return Category(id=row.id, code=row.code, name=row.name, keywords=tuple(row.keywords or ()),
-                    is_active=row.is_active)
+    return Category(
+        id=row.id, code=row.code, name=row.name, keywords=tuple(row.keywords or ()), is_active=row.is_active
+    )
 
 
 def category_to_row(category: Category, row: CategoryRow) -> CategoryRow:
@@ -108,8 +127,11 @@ def category_to_row(category: Category, row: CategoryRow) -> CategoryRow:
 
 def policy_to_domain(row: SLAPolicyRow) -> SLAPolicy:
     return SLAPolicy(
-        id=row.id, priority=Priority(row.priority), service_id=row.service_id,
-        response_minutes=row.response_minutes, resolution_minutes=row.resolution_minutes,
+        id=row.id,
+        priority=Priority(row.priority),
+        service_id=row.service_id,
+        response_minutes=row.response_minutes,
+        resolution_minutes=row.resolution_minutes,
         warning_threshold_pct=row.warning_threshold_pct,
     )
 
@@ -125,37 +147,64 @@ def policy_to_row(policy: SLAPolicy, row: SLAPolicyRow) -> SLAPolicyRow:
 
 # --- incidents ---------------------------------------------------------------------------
 
+
 def _sla_to_domain(row: IncidentRow) -> IncidentSLA | None:
     if row.sla_response_minutes is None:
         return None
     return IncidentSLA(
-        policy_id=row.sla_policy_id, response_minutes=row.sla_response_minutes,
-        resolution_minutes=row.sla_resolution_minutes, warning_pct=row.sla_warning_pct,
-        started_at=ensure_utc(row.created_at), responded_at=ensure_utc(row.acknowledged_at),
-        resolved_at=ensure_utc(row.resolved_at), response_warned=row.response_warned,
-        resolution_warned=row.resolution_warned, response_breached=row.response_breached,
-        resolution_breached=row.resolution_breached, paused_seconds=row.sla_paused_seconds or 0,
+        policy_id=row.sla_policy_id,
+        response_minutes=row.sla_response_minutes,
+        resolution_minutes=row.sla_resolution_minutes,
+        warning_pct=row.sla_warning_pct,
+        started_at=ensure_utc(row.created_at),
+        responded_at=ensure_utc(row.acknowledged_at),
+        resolved_at=ensure_utc(row.resolved_at),
+        response_warned=row.response_warned,
+        resolution_warned=row.resolution_warned,
+        response_breached=row.response_breached,
+        resolution_breached=row.resolution_breached,
+        paused_seconds=row.sla_paused_seconds or 0,
         paused_at=ensure_utc(row.sla_paused_at),
     )
 
 
 def comment_to_domain(row: CommentRow) -> Comment:
-    return Comment(id=row.id, author_id=row.author_id, kind=CommentKind(row.kind), body=row.body,
-                   is_internal=row.is_internal, created_at=ensure_utc(row.created_at))
+    return Comment(
+        id=row.id,
+        author_id=row.author_id,
+        kind=CommentKind(row.kind),
+        body=row.body,
+        is_internal=row.is_internal,
+        created_at=ensure_utc(row.created_at),
+    )
 
 
 def incident_to_domain(row: IncidentRow) -> Incident:
     return Incident(
-        id=row.id, title=row.title, description=row.description, reporter_id=row.reporter_id,
-        service_id=row.service_id, impact=row.impact, urgency=row.urgency, affected_users=row.affected_users,
-        created_at=ensure_utc(row.created_at), status=IncidentStatus(row.status), category_id=row.category_id,
+        id=row.id,
+        title=row.title,
+        description=row.description,
+        reporter_id=row.reporter_id,
+        service_id=row.service_id,
+        impact=row.impact,
+        urgency=row.urgency,
+        affected_users=row.affected_users,
+        created_at=ensure_utc(row.created_at),
+        status=IncidentStatus(row.status),
+        category_id=row.category_id,
         suggested_category_id=row.suggested_category_id,
-        priority=Priority(row.priority) if row.priority else None, priority_score=row.priority_score,
-        assigned_technician_id=row.assigned_technician_id, sla=_sla_to_domain(row),
-        updated_at=ensure_utc(row.updated_at), verified_at=ensure_utc(row.verified_at),
-        closed_at=ensure_utc(row.closed_at), resolution_summary=row.resolution_summary,
-        closure_notes=row.closure_notes, escalation_level=row.escalation_level,
-        parent_incident_id=row.parent_incident_id, comments=[comment_to_domain(c) for c in row.comments],
+        priority=Priority(row.priority) if row.priority else None,
+        priority_score=row.priority_score,
+        assigned_technician_id=row.assigned_technician_id,
+        sla=_sla_to_domain(row),
+        updated_at=ensure_utc(row.updated_at),
+        verified_at=ensure_utc(row.verified_at),
+        closed_at=ensure_utc(row.closed_at),
+        resolution_summary=row.resolution_summary,
+        closure_notes=row.closure_notes,
+        escalation_level=row.escalation_level,
+        parent_incident_id=row.parent_incident_id,
+        comments=[comment_to_domain(c) for c in row.comments],
     )
 
 
@@ -203,8 +252,13 @@ def incident_to_row(incident: Incident, row: IncidentRow, now: datetime) -> list
     new_pairs: list[tuple[Comment, CommentRow]] = []
     for comment in incident.comments:
         if comment.id is None:
-            comment_row = CommentRow(author_id=comment.author_id, kind=comment.kind.value, body=comment.body,
-                                     is_internal=comment.is_internal, created_at=comment.created_at)
+            comment_row = CommentRow(
+                author_id=comment.author_id,
+                kind=comment.kind.value,
+                body=comment.body,
+                is_internal=comment.is_internal,
+                created_at=comment.created_at,
+            )
             row.comments.append(comment_row)
             new_pairs.append((comment, comment_row))
     return new_pairs
@@ -212,28 +266,47 @@ def incident_to_row(incident: Incident, row: IncidentRow, now: datetime) -> list
 
 # --- audit / notifications / violations / feedback ----------------------------------------
 
+
 def audit_to_domain(row: AuditRecordRow) -> AuditRecord:
     return AuditRecord(
-        id=row.id, created_at=ensure_utc(row.created_at), action=row.action, description=row.description,
-        actor_id=row.actor_id, actor_name=row.actor_name, incident_id=row.incident_id,
-        previous_state=row.previous_state, new_state=row.new_state,
+        id=row.id,
+        created_at=ensure_utc(row.created_at),
+        action=row.action,
+        description=row.description,
+        actor_id=row.actor_id,
+        actor_name=row.actor_name,
+        incident_id=row.incident_id,
+        previous_state=row.previous_state,
+        new_state=row.new_state,
     )
 
 
 def audit_to_row(record: AuditRecord) -> AuditRecordRow:
     return AuditRecordRow(
-        incident_id=record.incident_id, actor_id=record.actor_id, actor_name=record.actor_name,
-        action=record.action, previous_state=record.previous_state, new_state=record.new_state,
-        description=record.description, created_at=record.created_at,
+        incident_id=record.incident_id,
+        actor_id=record.actor_id,
+        actor_name=record.actor_name,
+        action=record.action,
+        previous_state=record.previous_state,
+        new_state=record.new_state,
+        description=record.description,
+        created_at=record.created_at,
     )
 
 
 def notification_to_domain(row: NotificationRow) -> Notification:
     return Notification(
-        id=row.id, recipient_id=row.recipient_id, channel=ChannelType(row.channel),
-        type=NotificationType(row.event_type), title=row.title, body=row.body,
-        created_at=ensure_utc(row.created_at), incident_id=row.incident_id, is_read=row.is_read,
-        delivered=row.delivered, delivery_error=row.delivery_error,
+        id=row.id,
+        recipient_id=row.recipient_id,
+        channel=ChannelType(row.channel),
+        type=NotificationType(row.event_type),
+        title=row.title,
+        body=row.body,
+        created_at=ensure_utc(row.created_at),
+        incident_id=row.incident_id,
+        is_read=row.is_read,
+        delivered=row.delivered,
+        delivery_error=row.delivery_error,
     )
 
 
@@ -253,11 +326,21 @@ def notification_to_row(n: Notification, row: NotificationRow) -> NotificationRo
 
 def violation_to_domain(row: SLAViolationRow) -> SLAViolationRecord:
     return SLAViolationRecord(
-        id=row.id, incident_id=row.incident_id, target=SLATarget(row.target), due_at=ensure_utc(row.due_at),
-        detected_at=ensure_utc(row.detected_at), overdue_minutes=row.overdue_minutes,
+        id=row.id,
+        incident_id=row.incident_id,
+        target=SLATarget(row.target),
+        due_at=ensure_utc(row.due_at),
+        detected_at=ensure_utc(row.detected_at),
+        overdue_minutes=row.overdue_minutes,
     )
 
 
 def feedback_to_domain(row: FeedbackRow) -> Feedback:
-    return Feedback(id=row.id, incident_id=row.incident_id, employee_id=row.employee_id, rating=row.rating,
-                    comment=row.comment or "", created_at=ensure_utc(row.created_at))
+    return Feedback(
+        id=row.id,
+        incident_id=row.incident_id,
+        employee_id=row.employee_id,
+        rating=row.rating,
+        comment=row.comment or "",
+        created_at=ensure_utc(row.created_at),
+    )

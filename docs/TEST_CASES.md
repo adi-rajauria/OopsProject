@@ -1,6 +1,6 @@
 # Test cases
 
-Run: `cd backend && .venv/bin/pytest` (68 test functions, 97 cases with parametrisation; all pass in about 2 s).
+Run: `cd backend && .venv/bin/pytest` (99 test functions, 158 cases with parametrisation; about 20 s, mostly the seeded API tests).
 Types: **N** normal operation · **B** boundary · **I** invalid input · **E** exception · **A** authorization · **R** business rule · **S** state transition.
 
 Fixture world (`tests/conftest.py`): services PAY (criticality 4), MAIL (3), WIKI (1); categories APPLICATION, NETWORK, DATABASE, HARDWARE;
@@ -95,6 +95,51 @@ Clock fixed at 2026-11-16 10:00 UTC and advanced explicitly.
 | TC-67 | Pause through the service and the background monitor | request info at +10, monitor at +45, reply at +45, monitor at +64 / +66 | 0 violations, status PAUSED, due +65; 0 then 1 violation; audit shows "SLA clock paused/resumed" | R/S |
 | TC-68 | Pause state persisted | request info, reload; reply after 20 min, reload | `is_paused`, `paused_at` stored; then 1200 s paused, resolution due +50 in domain and in `incidents.resolution_due_at` | N |
 
+## Phase 2: intelligent features (`tests/unit/test_intelligence.py`)
+
+| ID | Description | Input | Expected | Type |
+|---|---|---|---|---|
+| TC-69 | TF-IDF relates the spec's payment examples | "Payment application unavailable" vs "Payment transaction failing", "Unable to make payment", printer jam | both payment texts >= 0.18, printer < 0.1; empty inputs safe | N/B |
+| TC-70 | Duplicate detector classification and window rules | same text from same reporter (10 min), other reporter, related text, unrelated, > 24 h old, closed | DUPLICATE+blocks / DUPLICATE / RELATED / ignored x3; same reporter after 31 min does not block | R/B |
+| TC-71 | Category suggestion | "My VPN keeps dropping…"; text similar to history; "Something is weird" | NETWORK (keyword vpn); AUTHENTICATION via history; no suggestion | N |
+| TC-72 | New category works immediately (Open/Closed) | add PRINTING with keywords, text about toner | PRINTING suggested | R |
+| TC-73 | Technician recommendation | 4 candidates, NETWORK incident, P3 then P1 | skilled+history first, unavailable last; breakdown sums to score; P1 weights experience more | N |
+| TC-74 | SLA risk levels | fresh P3, P2 58 % used, unassigned P2, overdue P1, then paused | LOW, MEDIUM, HIGH, BREACHED; ranking; paused excluded | B |
+| TC-75 | Escalation level boundaries (7 cases) | P1, 0 / 0.02 / 4.9 / 5 / 10 / 15 / 99 min after due | 0, 1, 1, 2, 3, 4, 4 | B |
+| TC-76 | Escalation applicability | unacked P1, P2, acknowledged P1; P2 enabled | 4 named steps; P2 and acked none; P2 escalates when enabled | R |
+| TC-77 | Correlation | 3 recent VPN incidents, 1 on Network (VPN depends on it), 1 old Wiki | VPN HOTSPOT, Network upstream cause, edges, Wiki DEGRADED | N |
+| TC-78 | Suggested resolutions | VPN incident vs resolved VPN, resolved printer, open VPN | only the resolved VPN fix returned | N |
+
+## Phase 2: services (`tests/services/test_phase2_services.py`)
+
+| ID | Description | Input | Expected | Type |
+|---|---|---|---|---|
+| TC-79 | Same-reporter duplicate blocked unless forced | same report twice in 5 min; then force | `DuplicateIncidentError` with matching number; forced one created, DUPLICATE link + parent | E/R |
+| TC-80 | Other people's similar reports are linked, not blocked | second user reports "Payment transaction failing" | created and assigned, RELATED link, audit "related to INC1001" | R |
+| TC-81 | Missing category | VPN text without category; vague text without category | NETWORK auto-chosen and audited "auto-suggested"; `InvalidIncidentError` | R/I |
+| TC-82 | Full escalation chain | unacked P1, monitor at due, due+1 s, +15 min | 0, 1, then 3 escalations; level 4; recipients technician, team lead, sys admin, IT manager | R/B |
+| TC-83 | No escalation for acknowledged / P2 by default | acked P1 and P2 after 2 h; technician enables P2; admin enables P2 | 0; 403; P2 escalates 4 levels, acked P1 stays 0 | R/A |
+| TC-84 | Every search criterion (13 cases) | id, date from/to, status, priority, category, service, technician, unassigned, SLA status, text, sort by priority, pagination | exact expected ids | N |
+| TC-85 | Employee scoping and technician queue | employee2 searches everything; technician queue | only own incident; only assigned active work | A |
+| TC-86 | Invalid search criteria (4 cases) | page 0, page size 101, 201-char text, from > to | `InvalidInputError` | I |
+| TC-87 | Dashboards | 3 incidents, one resolved with rating 4 | overview counts, violations 2, MTTR 2 h, rating 4; workload; per-service; SLA compliance 0 % P1; trends; employee 403; technician may see workload | N/A |
+| TC-88 | User and technician administration | employee creates user; unknown skill; valid tech + IT manager; profile update; self-deactivate; deactivate tech | 403; `InvalidInputError`; created; updated; rejected; deactivated; all audited | A/I |
+| TC-89 | Services, categories, SLA policies | duplicate service code; dependency cycle; new category; delete default policy; duplicate override; override applies | `ConflictError`; `InvalidInputError`; suggested immediately; rejected; `ConflictError`; 15-min resolution | R/E |
+| TC-90 | Real-time push only after commit | event handled, rollback, commit; event, commit | nothing after rollback; one message to reporter + assignee after commit | R |
+| TC-91 | Broadcaster audience filtering | staff, reporter, stranger subscribed | staff and reporter get the message, stranger does not; unsubscribe works | A |
+
+## Phase 2: seed and HTTP (`tests/api/test_seed_and_api.py`, also on PostgreSQL)
+
+| ID | Description | Input | Expected | Type |
+|---|---|---|---|---|
+| TC-92 | Seed meets data requirements | run seeder | >= 15 users, >= 8 services, >= 40 incidents in all 8 non-transient states, violations, links and escalations > 0; reset empties DB | N |
+| TC-93 | Employee to technician flow over HTTP | report laptop issue, employee tries to acknowledge, technician works it, employee verifies | auto HARDWARE + ASSIGNED; 403; RESOLVED with "verify" offered; feedback 5; audit order; bell count > 0 | N/A |
+| TC-94 | Role guards (10 cases) | employee/technician/admin x admin, reports, intelligence, queue | 403 or 200 exactly as designed | A |
+| TC-95 | Search parameters and HTTP error mapping | multi-value filters, number, own scope, number "ABC", page size 101, status "DONE"; impact 5, unknown service, no category, duplicate, force | filtered results; 422 x3; 422, 404 `SERVICE_NOT_FOUND`, 422 `INVALID_INCIDENT`, 409 `DUPLICATE_INCIDENT` with similarity >= 0.85, 201 | I/E |
+| TC-96 | Dashboards, intelligence, admin over HTTP | reports, correlation, risk, strategy switch, delete default policy, check-now, create technician | data present, PAY hotspot, ROUND_ROBIN active, 422, 200, 201 with skills | N |
+| TC-97 | Event stream authentication | bad token | 401 | A |
+| TC-98 | Background monitor pass | at seed time; 30 min later | no escalations; then new violations and escalations | R |
+
 ## Spec exception coverage
 
 | Spec situation | Exception | Test |
@@ -107,7 +152,7 @@ Clock fixed at 2026-11-16 10:00 UTC and advanced explicitly.
 | Technician workload exceeded | `TechnicianWorkloadExceededError` | TC-39 |
 | Service not found | `ServiceNotFoundError` | TC-40 |
 | Missing SLA configuration | `MissingSLAConfigurationError` | TC-12, TC-40 |
-| Duplicate incident | `DuplicateIncidentError` | Phase 2 (duplicate detection) |
+| Duplicate incident | `DuplicateIncidentError` | TC-71, TC-95 |
 | Database failure | `PersistenceError` | TC-64 |
 | Network failure | `NotificationDeliveryError` | TC-31, TC-43 |
 | Invalid user input | `InvalidInputError` | TC-06, TC-18, TC-28, TC-50, TC-61 |

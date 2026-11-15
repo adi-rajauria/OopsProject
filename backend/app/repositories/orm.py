@@ -64,9 +64,7 @@ class ServiceDependencyRow(Base):
     __tablename__ = "service_dependencies"
 
     service_id: Mapped[int] = mapped_column(ForeignKey("services.id", ondelete="CASCADE"), primary_key=True)
-    depends_on_service_id: Mapped[int] = mapped_column(
-        ForeignKey("services.id", ondelete="CASCADE"), primary_key=True
-    )
+    depends_on_service_id: Mapped[int] = mapped_column(ForeignKey("services.id", ondelete="CASCADE"), primary_key=True)
 
 
 class ServiceRow(Base):
@@ -174,9 +172,7 @@ class IncidentLinkRow(Base):
     __tablename__ = "incident_links"
 
     incident_id: Mapped[int] = mapped_column(ForeignKey("incidents.id", ondelete="CASCADE"), primary_key=True)
-    related_incident_id: Mapped[int] = mapped_column(
-        ForeignKey("incidents.id", ondelete="CASCADE"), primary_key=True
-    )
+    related_incident_id: Mapped[int] = mapped_column(ForeignKey("incidents.id", ondelete="CASCADE"), primary_key=True)
     similarity: Mapped[float] = mapped_column(Float)
     link_type: Mapped[str] = mapped_column(String(10))
     created_at: Mapped[datetime] = mapped_column(TZDateTime)

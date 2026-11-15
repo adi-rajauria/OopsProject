@@ -17,15 +17,22 @@ from tests.conftest import START
 
 
 def tech(tid: int, skills=(), years=1, available=True, max_workload=8) -> Technician:
-    return Technician(id=tid, email=f"t{tid}@corp.test", full_name=f"Tech {tid}", password_hash="x",
-                      created_at=START, profile=TechnicianProfile(skills=frozenset(skills), experience_years=years,
-                                                                  is_available=available,
-                                                                  max_workload=max_workload))
+    return Technician(
+        id=tid,
+        email=f"t{tid}@corp.test",
+        full_name=f"Tech {tid}",
+        password_hash="x",
+        created_at=START,
+        profile=TechnicianProfile(
+            skills=frozenset(skills), experience_years=years, is_available=available, max_workload=max_workload
+        ),
+    )
 
 
 def ctx(category="NETWORK", last=None) -> AssignmentContext:
-    return AssignmentContext(service_id=1, category_code=category, priority=Priority.P2,
-                             last_assigned_technician_id=last)
+    return AssignmentContext(
+        service_id=1, category_code=category, priority=Priority.P2, last_assigned_technician_id=last
+    )
 
 
 CANDIDATES = [

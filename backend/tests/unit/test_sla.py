@@ -9,8 +9,14 @@ from tests.conftest import START
 
 
 def policy(priority=Priority.P1, response=5, resolution=30, service_id=None, pid=1, warn=75):
-    return SLAPolicy(id=pid, priority=priority, response_minutes=response, resolution_minutes=resolution,
-                     service_id=service_id, warning_threshold_pct=warn)
+    return SLAPolicy(
+        id=pid,
+        priority=priority,
+        response_minutes=response,
+        resolution_minutes=resolution,
+        service_id=service_id,
+        warning_threshold_pct=warn,
+    )
 
 
 def test_service_specific_policy_overrides_default():
@@ -58,8 +64,7 @@ def test_targets_met_in_time_give_met_status_and_late_response_is_a_breach():
 
     late = IncidentSLA.from_policy(policy(), START)
     findings = late.mark_responded(START + timedelta(minutes=6))
-    assert [(f.kind, f.target, f.overdue_minutes) for f in findings] == [
-        (FindingKind.BREACH, SLATarget.RESPONSE, 1)]
+    assert [(f.kind, f.target, f.overdue_minutes) for f in findings] == [(FindingKind.BREACH, SLATarget.RESPONSE, 1)]
 
 
 def test_rebasing_keeps_original_start_time():

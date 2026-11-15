@@ -23,8 +23,7 @@ class FakeSmtpProvider:
         if self.fail:
             raise ConnectionError(f"SMTP host {self.host} unreachable")
         message_id = f"<{uuid.uuid4().hex}@{self.host}>"
-        self.outbox.append({"id": message_id, "from": from_addr, "to": to_addrs, "subject": subject,
-                            "body": body_text})
+        self.outbox.append({"id": message_id, "from": from_addr, "to": to_addrs, "subject": subject, "body": body_text})
         logger.info("[SIMULATED EMAIL] to=%s subject=%s", ",".join(to_addrs), subject)
         return message_id
 

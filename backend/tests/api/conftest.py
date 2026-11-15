@@ -19,8 +19,13 @@ TEST_DATABASE_URL = os.environ.get("ITSM_TEST_DATABASE_URL", "sqlite://")
 
 @pytest.fixture
 def settings() -> Settings:
-    return Settings(database_url=TEST_DATABASE_URL, jwt_secret="api-test-secret-that-is-long-enough-123",
-                    log_level="WARNING", _env_file=None)
+    return Settings(
+        database_url=TEST_DATABASE_URL,
+        jwt_secret="api-test-secret-that-is-long-enough-123",
+        log_level="WARNING",
+        sla_monitor_enabled=False,
+        _env_file=None,
+    )
 
 
 @pytest.fixture

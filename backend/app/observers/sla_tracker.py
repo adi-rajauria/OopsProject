@@ -17,7 +17,12 @@ class SLATracker(EventObserver):
             return
         if self._uow.sla_violations.exists(event.incident.id, event.target):
             return
-        self._uow.sla_violations.add(SLAViolationRecord(
-            incident_id=event.incident.id, target=event.target, due_at=event.due_at,
-            detected_at=event.occurred_at, overdue_minutes=event.overdue_minutes,
-        ))
+        self._uow.sla_violations.add(
+            SLAViolationRecord(
+                incident_id=event.incident.id,
+                target=event.target,
+                due_at=event.due_at,
+                detected_at=event.occurred_at,
+                overdue_minutes=event.overdue_minutes,
+            )
+        )

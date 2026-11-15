@@ -20,14 +20,32 @@ EXPECTED_TRANSITIONS = {
 
 def test_happy_path_walks_the_full_lifecycle():
     state = state_for(S.NEW)
-    path = [T.CLASSIFY, T.ASSIGN, T.ACKNOWLEDGE, T.START_WORK, T.REQUEST_INFO, T.PROVIDE_INFO,
-            T.RESOLVE, T.VERIFY, T.CLOSE]
+    path = [
+        T.CLASSIFY,
+        T.ASSIGN,
+        T.ACKNOWLEDGE,
+        T.START_WORK,
+        T.REQUEST_INFO,
+        T.PROVIDE_INFO,
+        T.RESOLVE,
+        T.VERIFY,
+        T.CLOSE,
+    ]
     visited = []
     for transition in path:
         state = state.apply(transition)
         visited.append(state.status)
-    assert visited == [S.CLASSIFIED, S.ASSIGNED, S.ACKNOWLEDGED, S.IN_PROGRESS, S.PENDING_INFO,
-                       S.IN_PROGRESS, S.RESOLVED, S.VERIFIED, S.CLOSED]
+    assert visited == [
+        S.CLASSIFIED,
+        S.ASSIGNED,
+        S.ACKNOWLEDGED,
+        S.IN_PROGRESS,
+        S.PENDING_INFO,
+        S.IN_PROGRESS,
+        S.RESOLVED,
+        S.VERIFIED,
+        S.CLOSED,
+    ]
 
 
 def test_new_to_closed_is_rejected():

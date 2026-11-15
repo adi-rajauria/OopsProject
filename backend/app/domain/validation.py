@@ -9,9 +9,7 @@ _PHONE_RE = re.compile(r"^\+?[0-9 \-]{7,20}$")
 def require_text(value: str, field: str, *, min_len: int = 1, max_len: int = 255) -> str:
     cleaned = (value or "").strip()
     if not min_len <= len(cleaned) <= max_len:
-        raise InvalidInputError(
-            f"{field} must be between {min_len} and {max_len} characters", details={"field": field}
-        )
+        raise InvalidInputError(f"{field} must be between {min_len} and {max_len} characters", details={"field": field})
     return cleaned
 
 

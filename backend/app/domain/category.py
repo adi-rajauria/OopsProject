@@ -48,8 +48,9 @@ class Category:
     def assign_id(self, new_id: int) -> None:
         self._id = new_id
 
-    def update(self, *, name: str | None = None, keywords: list[str] | None = None,
-               is_active: bool | None = None) -> None:
+    def update(
+        self, *, name: str | None = None, keywords: list[str] | None = None, is_active: bool | None = None
+    ) -> None:
         if name is not None:
             self._name = require_text(name, "name", min_len=2, max_len=60)
         if keywords is not None:

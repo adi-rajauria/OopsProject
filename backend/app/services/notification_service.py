@@ -12,8 +12,9 @@ class NotificationService:
         self._uow = uow
 
     def inbox(self, user: User, *, unread_only: bool = False, limit: int = 50) -> list[Notification]:
-        return self._uow.notifications.list_for_user(user.id, channel=ChannelType.IN_APP,
-                                                     unread_only=unread_only, limit=limit)
+        return self._uow.notifications.list_for_user(
+            user.id, channel=ChannelType.IN_APP, unread_only=unread_only, limit=limit
+        )
 
     def unread_count(self, user: User) -> int:
         return len(self._uow.notifications.list_for_user(user.id, unread_only=True, limit=1000))

@@ -147,8 +147,17 @@ class ClosedState(IncidentState):
 
 _STATES: dict[IncidentStatus, type[IncidentState]] = {
     cls.status: cls
-    for cls in (NewState, ClassifiedState, AssignedState, AcknowledgedState, InProgressState,
-                PendingInfoState, ResolvedState, VerifiedState, ClosedState)
+    for cls in (
+        NewState,
+        ClassifiedState,
+        AssignedState,
+        AcknowledgedState,
+        InProgressState,
+        PendingInfoState,
+        ResolvedState,
+        VerifiedState,
+        ClosedState,
+    )
 }
 
 

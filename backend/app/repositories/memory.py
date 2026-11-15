@@ -6,18 +6,22 @@ domain/service tests so business rules are verified without any database.
 
 from collections import Counter
 from dataclasses import replace
+from datetime import datetime
 from itertools import count
 
 from app.domain.audit import AuditRecord, AuditTrail
 from app.domain.category import Category
+from app.domain.clock import Clock, SystemClock
 from app.domain.enums import ACTIVE_WORK_STATUSES, ChannelType, IncidentStatus, Role, SLATarget
 from app.domain.feedback import Feedback
 from app.domain.incident import Incident
+from app.domain.links import IncidentLink
 from app.domain.notification import Notification
 from app.domain.repositories import (
     AuditRepository,
     CategoryRepository,
     FeedbackRepository,
+    IncidentLinkRepository,
     IncidentRepository,
     NotificationRepository,
     ServiceRepository,
@@ -27,6 +31,7 @@ from app.domain.repositories import (
     UnitOfWork,
     UserRepository,
 )
+from app.domain.search import SearchCriteria, SearchPage, SortOrder
 from app.domain.service import ITService
 from app.domain.sla import SLAPolicy, SLAViolationRecord
 from app.domain.users import User
@@ -57,8 +62,21 @@ class InMemoryUserRepository(UserRepository):
         return [u for u in self._items.values() if role is None or u.role == role]
 
 
+def _sort_key(order: SortOrder):
+    match order:
+        case SortOrder.OLDEST:
+            return lambda i: (i.created_at, i.id)
+        case SortOrder.PRIORITY:
+            return lambda i: (i.priority.rank if i.priority else 9, -i.created_at.timestamp(), -i.id)
+        case SortOrder.RECENTLY_UPDATED:
+            return lambda i: (-i.updated_at.timestamp(), -i.id)
+        case _:
+            return lambda i: (-i.created_at.timestamp(), -i.id)
+
+
 class InMemoryIncidentRepository(IncidentRepository):
-    def __init__(self) -> None:
+    def __init__(self, clock: Clock | None = None) -> None:
+        self._clock = clock or SystemClock()
         self._items: dict[int, Incident] = {}
         self._ids = count(1)
         self._comment_ids = count(1)
@@ -83,14 +101,51 @@ class InMemoryIncidentRepository(IncidentRepository):
     def list_all(self) -> list[Incident]:
         return list(self._items.values())
 
+    def search(self, criteria: SearchCriteria) -> SearchPage:
+        now = self._clock.now()
+        matches = sorted(
+            (i for i in self._items.values() if criteria.matches(i, i.sla_status(now))), key=_sort_key(criteria.sort)
+        )
+        page = matches[criteria.offset : criteria.offset + criteria.page_size]
+        return SearchPage(page, len(matches), criteria.page, criteria.page_size)
+
+    def recent_for_service(self, service_id: int, since: datetime) -> list[Incident]:
+        return [
+            i
+            for i in self._items.values()
+            if i.service_id == service_id and i.created_at >= since and i.status is not IncidentStatus.CLOSED
+        ]
+
     def active_counts_by_technician(self) -> dict[int, int]:
-        return dict(Counter(i.assigned_technician_id for i in self._items.values()
-                            if i.assigned_technician_id is not None and i.status in ACTIVE_WORK_STATUSES))
+        return dict(
+            Counter(
+                i.assigned_technician_id
+                for i in self._items.values()
+                if i.assigned_technician_id is not None and i.status in ACTIVE_WORK_STATUSES
+            )
+        )
 
     def resolved_counts_for_service(self, service_id: int) -> dict[int, int]:
-        return dict(Counter(i.assigned_technician_id for i in self._items.values()
-                            if i.service_id == service_id and i.assigned_technician_id is not None
-                            and i.status in RESOLVED_STATUSES))
+        return dict(
+            Counter(
+                i.assigned_technician_id
+                for i in self._items.values()
+                if i.service_id == service_id and i.assigned_technician_id is not None and i.status in RESOLVED_STATUSES
+            )
+        )
+
+
+class InMemoryIncidentLinkRepository(IncidentLinkRepository):
+    def __init__(self) -> None:
+        self._items: list[IncidentLink] = []
+
+    def add(self, link: IncidentLink) -> IncidentLink:
+        self._items.append(link)
+        return link
+
+    def list_for(self, incident_id: int) -> list[IncidentLink]:
+        found = [l for l in self._items if incident_id in (l.incident_id, l.related_incident_id)]
+        return sorted(found, key=lambda l: -l.similarity)
 
 
 class _InMemoryEntityRepository[T]:
@@ -162,13 +217,23 @@ class InMemoryAuditRepository(AuditRepository):
     def trail_for(self, incident_id: int) -> AuditTrail:
         return AuditTrail(incident_id, (r for r in self._records if r.incident_id == incident_id))
 
-    def list_recent(self, *, limit: int = 100, offset: int = 0, incident_id: int | None = None,
-                    actor_id: int | None = None, action: str | None = None) -> list[AuditRecord]:
-        matches = [r for r in reversed(self._records)
-                   if (incident_id is None or r.incident_id == incident_id)
-                   and (actor_id is None or r.actor_id == actor_id)
-                   and (action is None or r.action == action)]
-        return matches[offset:offset + limit]
+    def list_recent(
+        self,
+        *,
+        limit: int = 100,
+        offset: int = 0,
+        incident_id: int | None = None,
+        actor_id: int | None = None,
+        action: str | None = None,
+    ) -> list[AuditRecord]:
+        matches = [
+            r
+            for r in reversed(self._records)
+            if (incident_id is None or r.incident_id == incident_id)
+            and (actor_id is None or r.actor_id == actor_id)
+            and (action is None or r.action == action)
+        ]
+        return matches[offset : offset + limit]
 
 
 class InMemoryNotificationRepository(NotificationRepository):
@@ -187,11 +252,21 @@ class InMemoryNotificationRepository(NotificationRepository):
     def update(self, notification: Notification) -> None:
         self._items[notification.id] = notification
 
-    def list_for_user(self, user_id: int, *, channel: ChannelType | None = ChannelType.IN_APP,
-                      unread_only: bool = False, limit: int = 50) -> list[Notification]:
-        matches = [n for n in reversed(self._items.values())
-                   if n.recipient_id == user_id and (channel is None or n.channel == channel)
-                   and (not unread_only or not n.is_read)]
+    def list_for_user(
+        self,
+        user_id: int,
+        *,
+        channel: ChannelType | None = ChannelType.IN_APP,
+        unread_only: bool = False,
+        limit: int = 50,
+    ) -> list[Notification]:
+        matches = [
+            n
+            for n in reversed(self._items.values())
+            if n.recipient_id == user_id
+            and (channel is None or n.channel == channel)
+            and (not unread_only or not n.is_read)
+        ]
         return matches[:limit]
 
     def list_all(self, *, limit: int = 200) -> list[Notification]:
@@ -244,9 +319,11 @@ class InMemorySettingsRepository(SettingsRepository):
 
 
 class InMemoryUnitOfWork(UnitOfWork):
-    def __init__(self) -> None:
+    def __init__(self, clock: Clock | None = None) -> None:
+        super().__init__()
         self.users = InMemoryUserRepository()
-        self.incidents = InMemoryIncidentRepository()
+        self.incidents = InMemoryIncidentRepository(clock)
+        self.links = InMemoryIncidentLinkRepository()
         self.services = InMemoryServiceRepository()
         self.categories = InMemoryCategoryRepository()
         self.sla_policies = InMemorySLAPolicyRepository()
@@ -257,8 +334,8 @@ class InMemoryUnitOfWork(UnitOfWork):
         self.settings = InMemorySettingsRepository()
         self.commits = 0
 
-    def commit(self) -> None:
+    def _commit(self) -> None:
         self.commits += 1
 
-    def rollback(self) -> None:
+    def _rollback(self) -> None:
         """In-memory objects are not transactional; tests only assert on committed flows."""

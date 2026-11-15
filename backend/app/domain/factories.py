@@ -34,8 +34,16 @@ class UserFactory:
             role = Role(role)
         except ValueError:
             raise InvalidInputError(f"Unknown role '{role}'", details={"field": "role"}) from None
-        common = dict(id=id, email=email, full_name=full_name, password_hash=password_hash,
-                      created_at=created_at, phone=phone, department=department, is_active=is_active)
+        common = dict(
+            id=id,
+            email=email,
+            full_name=full_name,
+            password_hash=password_hash,
+            created_at=created_at,
+            phone=phone,
+            department=department,
+            is_active=is_active,
+        )
         match role:
             case Role.EMPLOYEE:
                 return Employee(**common)
@@ -58,23 +66,33 @@ class NewIncidentData:
 
 class IncidentFactory:
     @staticmethod
-    def create(reporter: User, data: NewIncidentData, service: ITService, *,
-               suggested_category_id: int | None, now: datetime) -> Incident:
+    def create(
+        reporter: User, data: NewIncidentData, service: ITService, *, suggested_category_id: int | None, now: datetime
+    ) -> Incident:
         if not reporter.has_permission(Permission.REPORT_INCIDENT):
             raise UnauthorizedOperationError("This account cannot report incidents")
         if not service.is_active:
             raise InvalidIncidentError(f"Service {service.name} is retired; choose an active service")
         return Incident.report(
-            reporter=reporter, title=data.title, description=data.description, service_id=service.id,
-            impact=data.impact, urgency=data.urgency, affected_users=data.affected_users,
-            suggested_category_id=suggested_category_id, now=now,
+            reporter=reporter,
+            title=data.title,
+            description=data.description,
+            service_id=service.id,
+            impact=data.impact,
+            urgency=data.urgency,
+            affected_users=data.affected_users,
+            suggested_category_id=suggested_category_id,
+            now=now,
         )
 
 
 class NotificationFactory:
     _TEMPLATES: dict[NotificationType, tuple[str, str]] = {
         NotificationType.INCIDENT_CREATED: ("{number} received", "We logged your incident '{title}'. {detail}"),
-        NotificationType.INCIDENT_ASSIGNED: ("{number} assigned to you ({priority})", "'{title}' is now in your queue. {detail}"),
+        NotificationType.INCIDENT_ASSIGNED: (
+            "{number} assigned to you ({priority})",
+            "'{title}' is now in your queue. {detail}",
+        ),
         NotificationType.TECHNICIAN_ASSIGNED: ("{number} has a technician", "{detail}"),
         NotificationType.PRIORITY_CHANGED: ("{number} priority changed", "{detail}"),
         NotificationType.STATUS_CHANGED: ("{number} status update", "{detail}"),
@@ -89,8 +107,16 @@ class NotificationFactory:
     }
 
     @classmethod
-    def create(cls, *, recipient: User, channel: ChannelType, type: NotificationType,
-               incident: IncidentRef | None, detail: str, now: datetime) -> Notification:
+    def create(
+        cls,
+        *,
+        recipient: User,
+        channel: ChannelType,
+        type: NotificationType,
+        incident: IncidentRef | None,
+        detail: str,
+        now: datetime,
+    ) -> Notification:
         title_fmt, body_fmt = cls._TEMPLATES[type]
         values = {
             "number": incident.number if incident else "",
@@ -99,7 +125,12 @@ class NotificationFactory:
             "detail": detail,
         }
         return Notification(
-            id=None, recipient_id=recipient.id, channel=channel, type=type,
-            title=title_fmt.format(**values).strip(), body=body_fmt.format(**values).strip(),
-            created_at=now, incident_id=incident.id if incident else None,
+            id=None,
+            recipient_id=recipient.id,
+            channel=channel,
+            type=type,
+            title=title_fmt.format(**values).strip(),
+            body=body_fmt.format(**values).strip(),
+            created_at=now,
+            incident_id=incident.id if incident else None,
         )

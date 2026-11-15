@@ -26,15 +26,28 @@ def seed(uow: SqlAlchemyUnitOfWork):
     uow.services.update(pay)
     app_cat = uow.categories.add(Category(id=None, code="APPLICATION", name="Application", keywords=["app"]))
     for priority, (response, resolution) in PDF_SLA.items():
-        uow.sla_policies.add(SLAPolicy(id=None, priority=priority, response_minutes=response,
-                                       resolution_minutes=resolution))
-    employee = uow.users.add(UserFactory.create(Role.EMPLOYEE, email="e@corp.test", full_name="Emp One",
-                                                password_hash="h", created_at=START))
-    tech = uow.users.add(UserFactory.create(
-        Role.TECHNICIAN, email="t@corp.test", full_name="Tech One", password_hash="h", created_at=START,
-        phone="+91 9000000009", profile=TechnicianProfile(skills=frozenset({"APPLICATION"}), experience_years=4)))
-    uow.users.add(UserFactory.create(Role.ADMINISTRATOR, email="a@corp.test", full_name="Admin One",
-                                     password_hash="h", created_at=START))
+        uow.sla_policies.add(
+            SLAPolicy(id=None, priority=priority, response_minutes=response, resolution_minutes=resolution)
+        )
+    employee = uow.users.add(
+        UserFactory.create(Role.EMPLOYEE, email="e@corp.test", full_name="Emp One", password_hash="h", created_at=START)
+    )
+    tech = uow.users.add(
+        UserFactory.create(
+            Role.TECHNICIAN,
+            email="t@corp.test",
+            full_name="Tech One",
+            password_hash="h",
+            created_at=START,
+            phone="+91 9000000009",
+            profile=TechnicianProfile(skills=frozenset({"APPLICATION"}), experience_years=4),
+        )
+    )
+    uow.users.add(
+        UserFactory.create(
+            Role.ADMINISTRATOR, email="a@corp.test", full_name="Admin One", password_hash="h", created_at=START
+        )
+    )
     uow.commit()
     return pay, app_cat, employee, tech
 
@@ -45,9 +58,18 @@ def test_incident_round_trips_through_postgres_compatible_schema(settings, sessi
         uow = SqlAlchemyUnitOfWork(session, clock)
         pay, category, employee, tech = seed(uow)
         container = build_container(uow, infra)
-        incident = container.incidents.report(employee, NewIncidentData(
-            title="Payment application unavailable", description="Checkout fails with HTTP 503 for all users",
-            service_id=pay.id, impact=4, urgency=4, affected_users=200, category_id=category.id))
+        incident = container.incidents.report(
+            employee,
+            NewIncidentData(
+                title="Payment application unavailable",
+                description="Checkout fails with HTTP 503 for all users",
+                service_id=pay.id,
+                impact=4,
+                urgency=4,
+                affected_users=200,
+                category_id=category.id,
+            ),
+        )
         clock.advance(minutes=2)
         container.incidents.acknowledge(incident.id, tech)
         container.incidents.start_work(incident.id, tech)
@@ -65,7 +87,11 @@ def test_incident_round_trips_through_postgres_compatible_schema(settings, sessi
         assert loaded.sla.is_breached(SLATarget.RESOLUTION) and not loaded.sla.is_breached(SLATarget.RESPONSE)
         assert [(c.body, c.is_internal) for c in loaded.comments] == [("Investigating gateway", True)]
         assert uow.audit.trail_for(incident_id).actions()[:4] == [
-            "CREATED", "CLASSIFIED", "PRIORITY_CALCULATED", "ASSIGNED"]
+            "CREATED",
+            "CLASSIFIED",
+            "PRIORITY_CALCULATED",
+            "ASSIGNED",
+        ]
         assert [v.target for v in uow.sla_violations.list()] == [SLATarget.RESOLUTION]
         assert uow.incidents.active_counts_by_technician() == {tech.id: 1}
         assert uow.services.get(pay.id).depends_on == {pay.id + 1}
@@ -88,9 +114,18 @@ def test_paused_sla_clock_is_persisted(settings, session_factory, clock):
         uow = SqlAlchemyUnitOfWork(session, clock)
         pay, category, employee, tech = seed(uow)
         incidents = build_container(uow, infra).incidents
-        incident = incidents.report(employee, NewIncidentData(
-            title="Refunds stuck", description="Refund requests stay pending for every customer",
-            service_id=pay.id, impact=4, urgency=4, affected_users=20, category_id=category.id))
+        incident = incidents.report(
+            employee,
+            NewIncidentData(
+                title="Refunds stuck",
+                description="Refund requests stay pending for every customer",
+                service_id=pay.id,
+                impact=4,
+                urgency=4,
+                affected_users=20,
+                category_id=category.id,
+            ),
+        )
         incidents.acknowledge(incident.id, tech)
         incidents.start_work(incident.id, tech)
         incidents.request_info(incident.id, tech, "Which order ids are affected?")

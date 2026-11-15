@@ -61,8 +61,9 @@ class AssignmentStrategy(ABC):
         return AssignmentDecision(chosen.technician, self.key, f"{self.name}: {reason}")
 
     @abstractmethod
-    def _pick(self, eligible: list[TechnicianCandidate],
-              context: AssignmentContext) -> tuple[TechnicianCandidate, str]: ...
+    def _pick(
+        self, eligible: list[TechnicianCandidate], context: AssignmentContext
+    ) -> tuple[TechnicianCandidate, str]: ...
 
 
 class AssignmentStrategyRegistry:
@@ -109,7 +110,10 @@ class SkillBasedStrategy(AssignmentStrategy):
                 details={"category": context.category_code},
             )
         best = min(skilled, key=lambda c: (c.active_incidents, -c.experience, c.technician.id))
-        return best, f"has {context.category_code} skill and the lowest load among skilled ({best.active_incidents} active)"
+        return (
+            best,
+            f"has {context.category_code} skill and the lowest load among skilled ({best.active_incidents} active)",
+        )
 
 
 @AssignmentStrategyRegistry.register
@@ -149,7 +153,10 @@ class ExperienceBasedStrategy(AssignmentStrategy):
         pool = skilled or eligible
         best = min(pool, key=lambda c: (-c.experience, -c.service_history, c.active_incidents, c.technician.id))
         skill_note = "skilled, " if skilled else "no skilled technician free, "
-        return best, f"{skill_note}most experienced ({best.experience} yrs, {best.service_history} past incidents on this service)"
+        return (
+            best,
+            f"{skill_note}most experienced ({best.experience} yrs, {best.service_history} past incidents on this service)",
+        )
 
 
 DEFAULT_STRATEGY_KEY = SkillBasedStrategy.key

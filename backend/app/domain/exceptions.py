@@ -20,6 +20,7 @@ class ITSMError(Exception):
 
 # --- Authentication / authorization -------------------------------------------------------
 
+
 class AuthenticationError(ITSMError):
     code = "AUTHENTICATION_FAILED"
 
@@ -44,6 +45,7 @@ class UnauthorizedOperationError(ITSMError):
 
 
 # --- Validation --------------------------------------------------------------------------
+
 
 class InvalidInputError(ITSMError):
     """Spec: invalid user input."""
@@ -72,6 +74,7 @@ class InvalidStateTransitionError(ITSMError):
 
 
 # --- Not found / conflicts -----------------------------------------------------------------
+
 
 class NotFoundError(ITSMError):
     code = "NOT_FOUND"
@@ -137,6 +140,7 @@ class FeedbackAlreadySubmittedError(ConflictError):
 
 # --- Assignment ---------------------------------------------------------------------------
 
+
 class AssignmentError(ITSMError):
     code = "ASSIGNMENT_FAILED"
 
@@ -161,6 +165,7 @@ class TechnicianWorkloadExceededError(AssignmentError):
 
 # --- Configuration ------------------------------------------------------------------------
 
+
 class MissingSLAConfigurationError(ITSMError):
     """Spec: missing SLA configuration."""
 
@@ -174,6 +179,7 @@ class MissingSLAConfigurationError(ITSMError):
 
 
 # --- Infrastructure -----------------------------------------------------------------------
+
 
 class InfrastructureError(ITSMError):
     code = "INFRASTRUCTURE_ERROR"

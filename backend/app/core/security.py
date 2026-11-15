@@ -41,9 +41,12 @@ class JwtTokenService:
     def decode(self, token: str) -> TokenClaims:
         try:
             # Signature is verified by PyJWT; expiry is checked against our injected Clock so it is testable.
-            payload = jwt.decode(token, self._secret, algorithms=[self._algorithm],
-                                 options={"require": ["exp", "sub", "role"], "verify_exp": False,
-                                          "verify_iat": False})
+            payload = jwt.decode(
+                token,
+                self._secret,
+                algorithms=[self._algorithm],
+                options={"require": ["exp", "sub", "role"], "verify_exp": False, "verify_iat": False},
+            )
             claims = TokenClaims(user_id=int(payload["sub"]), role=str(payload["role"]))
             expires_at = float(payload["exp"])
         except (jwt.InvalidTokenError, ValueError, TypeError):

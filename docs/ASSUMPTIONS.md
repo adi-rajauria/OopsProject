@@ -15,7 +15,7 @@ Every assumption made while building I-ITSM, numbered so the report can cite the
 9. SLA status per incident: ON_TRACK / AT_RISK / BREACHED / PAUSED / MET. Each breach kind recorded once in `sla_violations`.
 10. SLA monitor + escalation: one asyncio background loop every 60 s inside the uvicorn process (single-process assumption; multi-worker discussed under scalability).
 11. Escalation for unacknowledged P1 (and P2 if enabled in settings): each level fires after one additional response window past the response deadline. Chain: assigned Technician → Team Lead of same team → System Admin → IT Manager. Each step increments `escalation_level`, notifies, audits.
-12. Duplicates: on create, compare with open incidents on the same service in last 24 h via scikit-learn TF-IDF + cosine similarity. ≥ 0.45 → RELATED link shown. ≥ 0.85 from the same reporter within 30 min → `DuplicateIncidentError` unless resubmitted with `force=true`. Other users' near-duplicates are linked, never blocked.
+12. Duplicates: on create, compare with open incidents on the same service in last 24 h via scikit-learn TF-IDF + cosine similarity. ≥ 0.45 → RELATED link shown. ≥ 0.85 from the same reporter within 30 min → `DuplicateIncidentError` unless resubmitted with `force=true`. Other users' near-duplicates are linked, never blocked. *(Thresholds recalibrated in Phase 2: RELATED >= 0.18 with character n-gram TF-IDF, see #51.)*
 13. Category suggestion: keyword score + scikit-learn TF-IDF similarity to centroids of historical resolved incidents; suggested and pre-filled, employee can override. Keywords stored in `categories` table so admin-added categories work immediately.
 14. Assignment: technicians with active ≥ `max_workload` (default 8) excluded; none eligible → `TechnicianUnavailableError`, incident stays CLASSIFIED for admin. Manual assign over cap → `TechnicianWorkloadExceededError`. "Active" = ASSIGNED, ACKNOWLEDGED, IN_PROGRESS, PENDING_INFO. Skill-based requires category ∈ skills. Round-robin cursor in `system_settings`.
 15. Smart recommendation (separate from auto-assignment strategies): skills 40 %, workload 25 %, experience 15 %, past incidents on same service 15 %, availability 5 %; returns top 3 with human-readable reasons.
@@ -57,3 +57,24 @@ Every assumption made while building I-ITSM, numbered so the report can cite the
 48. All datetimes are normalised to UTC when loaded (SQLite returns naive values; PostgreSQL returns the session time zone).
 49. Phase 1 HTTP surface is `/api/health` and `/api/auth/*`; all other routers arrive in Phase 2.
 50. The `.ps1` script mirrors the `.sh` script but could not be executed here (no PowerShell on the dev machine).
+
+## Phase 2 (API, search, dashboards, intelligence, monitor, seed)
+
+51. **Duplicate thresholds recalibrated**: word-level TF-IDF scored the spec's own related payment examples at only 0.05-0.09, so the detector uses character n-grams (3-5, `char_wb`) and RELATED >= **0.18** (unrelated same-service tickets scored <= 0.04, related ones 0.19-0.34). DUPLICATE stays >= 0.85; the strongest duplicate becomes `parent_incident_id`. Evidence in `docs/ALGORITHMS.md`.
+52. A category suggestion is computed for every report and stored as `suggested_category_id` (suggested vs chosen can be analysed). The reporter's choice always wins; with no choice and no suggestion >= 0.12 the report is rejected with "please choose a category".
+53. Escalation level 1 fires as soon as the response deadline has strictly passed, then one level per response window. Levels are walked one at a time (each audited and notified). If unassigned, level 1 goes to system administrators. "Team Lead" = team leads in the assignee's team, falling back to any team lead.
+54. P2 escalation is an administrator setting (default off) stored in `system_settings`.
+55. Dashboards are computed in Python from the repositories. This is fine at demo scale; the report's scalability section explains moving them to SQL aggregates.
+56. MTTR = mean(resolved_at - created_at) in hours over resolved incidents (paused time included). SLA compliance per priority = resolution target met / incidents whose resolution target is settled (resolved or already breached).
+57. Search: the in-memory repository evaluates SLA status live; the SQL repository filters on the denormalised `sla_status` column, refreshed on every save and every monitor pass (at most about 60 s stale).
+58. Search by number accepts "INC1005" or "1005"; free text is a case-insensitive substring match on title + description (wildcards escaped).
+59. Technicians (staff) may view correlation, SLA risk, workload, recommendations and suggested resolutions; overview/service/SLA/trend reports and all `/api/admin` endpoints are administrator-only.
+60. Technicians can toggle their own availability; administrators can change any technician profile.
+61. Default (service-less) SLA policies cannot be deleted, only edited, so every priority always has an SLA; service overrides can be deleted.
+62. Service dependencies must stay acyclic (depth-first search on every change).
+63. Real-time: SSE messages are published only after a successful commit. Staff receive every incident event; other users only events for incidents they reported (or that escalate to them). The in-memory broadcaster assumes a single API process (multi-instance would need Redis pub/sub or Postgres LISTEN/NOTIFY).
+64. Correlation: a hotspot is >= 3 open incidents on one service in the last 2 h; "upstream cause" looks one hop along the dependency graph.
+65. Seed data is generated by replaying history through the services, relative to the seeding time; every demo account uses the password `Demo@1234`. Because times are relative, re-seed shortly before recording the demo.
+66. The SLA risk score caps the elapsed contribution at 150 % so very late incidents remain comparable.
+67. `POST /api/admin/sla/check-now` runs one monitor pass on demand (for the demo); the background monitor still runs every 60 s.
+68. Code is formatted with ruff (120 columns); ruff is a dev tool only, not a project dependency.

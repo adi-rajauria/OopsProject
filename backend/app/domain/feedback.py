@@ -18,4 +18,3 @@ class Feedback:
             raise InvalidInputError("Rating must be an integer from 1 to 5", details={"field": "rating"})
         if len(self.comment) > 2000:
             raise InvalidInputError("Feedback comment is too long", details={"field": "comment"})
-

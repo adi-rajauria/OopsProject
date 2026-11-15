@@ -72,55 +72,82 @@ class World:
     def tech(self, key: str) -> Technician:
         return self.users[key]
 
-    def report(self, reporter: User | None = None, **overrides) -> Incident:
-        data = dict(title="Payment application unavailable",
-                    description="Users are unable to complete transactions on the payment portal.",
-                    service_id=self.services["PAY"].id, impact=4, urgency=4, affected_users=50,
-                    category_id=self.categories["APPLICATION"].id)
+    def report(self, reporter: User | None = None, *, force: bool = True, **overrides) -> Incident:
+        """force=True skips the same-reporter duplicate block (tests file many similar incidents)."""
+        data = dict(
+            title="Payment application unavailable",
+            description="Users are unable to complete transactions on the payment portal.",
+            service_id=self.services["PAY"].id,
+            impact=4,
+            urgency=4,
+            affected_users=50,
+            category_id=self.categories["APPLICATION"].id,
+        )
         data.update(overrides)
-        return self.container.incidents.report(reporter or self.employee, NewIncidentData(**data))
+        return self.container.incidents.report(reporter or self.employee, NewIncidentData(**data), force=force)
 
 
 def _user(uow: InMemoryUnitOfWork, role: Role, email: str, name: str, **extra) -> User:
-    user = UserFactory.create(role, email=email, full_name=name, password_hash="plain$Password1",
-                              created_at=START, **extra)
+    user = UserFactory.create(
+        role, email=email, full_name=name, password_hash="plain$Password1", created_at=START, **extra
+    )
     return uow.users.add(user)
 
 
 def build_world(clock: FakeClock | None = None) -> World:
     clock = clock or FakeClock()
-    uow = InMemoryUnitOfWork()
+    uow = InMemoryUnitOfWork(clock)
     smtp, sms = FakeSmtpProvider(), FakeSmsGateway()
     infra = Infrastructure(
-        clock=clock, hasher=PlainHasher(),
+        clock=clock,
+        hasher=PlainHasher(),
         tokens=JwtTokenService(os.environ["ITSM_JWT_SECRET"], clock),
         channels=ChannelRegistry([InAppChannel(), EmailChannel(smtp), SMSChannel(sms)]),
     )
     world = World(uow=uow, clock=clock, container=build_container(uow, infra), smtp=smtp, sms=sms)
 
     for code, name, crit in (("PAY", "Payments", 4), ("MAIL", "Email", 3), ("WIKI", "Intranet Wiki", 1)):
-        world.services[code] = uow.services.add(ITService(id=None, code=code, name=name,
-                                                          business_criticality=crit))
-    for code, keywords in (("APPLICATION", ["app", "error"]), ("NETWORK", ["vpn", "wifi"]),
-                           ("DATABASE", ["sql", "query"]), ("HARDWARE", ["laptop", "printer"])):
-        world.categories[code] = uow.categories.add(Category(id=None, code=code, name=code.title(),
-                                                             keywords=keywords))
+        world.services[code] = uow.services.add(ITService(id=None, code=code, name=name, business_criticality=crit))
+    for code, keywords in (
+        ("APPLICATION", ["app", "error"]),
+        ("NETWORK", ["vpn", "wifi"]),
+        ("DATABASE", ["sql", "query"]),
+        ("HARDWARE", ["laptop", "printer"]),
+    ):
+        world.categories[code] = uow.categories.add(Category(id=None, code=code, name=code.title(), keywords=keywords))
     for priority, (response, resolution) in PDF_SLA.items():
-        uow.sla_policies.add(SLAPolicy(id=None, priority=priority, response_minutes=response,
-                                       resolution_minutes=resolution))
+        uow.sla_policies.add(
+            SLAPolicy(id=None, priority=priority, response_minutes=response, resolution_minutes=resolution)
+        )
 
     world.users["employee"] = _user(uow, Role.EMPLOYEE, "emp@corp.test", "Eve Employee", phone="+91 9000000001")
     world.users["employee2"] = _user(uow, Role.EMPLOYEE, "emp2@corp.test", "Evan Employee")
-    world.users["t_app"] = _user(uow, Role.TECHNICIAN, "app@corp.test", "Asha AppTech", phone="+91 9000000002",
-                                 profile=TechnicianProfile(skills=frozenset({"APPLICATION"}), experience_years=5))
-    world.users["t_net"] = _user(uow, Role.TECHNICIAN, "net@corp.test", "Nikhil NetTech",
-                                 profile=TechnicianProfile(skills=frozenset({"NETWORK"}), experience_years=10))
-    world.users["t_db"] = _user(uow, Role.TECHNICIAN, "db@corp.test", "Dia DbTech",
-                                profile=TechnicianProfile(skills=frozenset({"DATABASE", "APPLICATION"}),
-                                                          experience_years=2))
+    world.users["t_app"] = _user(
+        uow,
+        Role.TECHNICIAN,
+        "app@corp.test",
+        "Asha AppTech",
+        phone="+91 9000000002",
+        profile=TechnicianProfile(skills=frozenset({"APPLICATION"}), experience_years=5),
+    )
+    world.users["t_net"] = _user(
+        uow,
+        Role.TECHNICIAN,
+        "net@corp.test",
+        "Nikhil NetTech",
+        profile=TechnicianProfile(skills=frozenset({"NETWORK"}), experience_years=10),
+    )
+    world.users["t_db"] = _user(
+        uow,
+        Role.TECHNICIAN,
+        "db@corp.test",
+        "Dia DbTech",
+        profile=TechnicianProfile(skills=frozenset({"DATABASE", "APPLICATION"}), experience_years=2),
+    )
     world.users["admin"] = _user(uow, Role.ADMINISTRATOR, "admin@corp.test", "Ada Admin", phone="+91 9000000003")
-    world.users["manager"] = _user(uow, Role.ADMINISTRATOR, "manager@corp.test", "Mani Manager",
-                                   admin_level=AdminLevel.IT_MANAGER)
+    world.users["manager"] = _user(
+        uow, Role.ADMINISTRATOR, "manager@corp.test", "Mani Manager", admin_level=AdminLevel.IT_MANAGER
+    )
     return world
 
 

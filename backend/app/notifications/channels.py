@@ -38,8 +38,12 @@ class EmailChannel(NotificationChannel):
 
     def deliver(self, notification: Notification, recipient: User) -> None:
         try:
-            self._provider.send_mail(from_addr=self._provider.sender, to_addrs=[recipient.email],
-                                     subject=f"[I-ITSM] {notification.title}", body_text=notification.body)
+            self._provider.send_mail(
+                from_addr=self._provider.sender,
+                to_addrs=[recipient.email],
+                subject=f"[I-ITSM] {notification.title}",
+                body_text=notification.body,
+            )
         except (ConnectionError, OSError) as exc:
             raise NotificationDeliveryError(f"Email delivery failed: {exc}") from exc
 
