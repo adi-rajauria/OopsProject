@@ -1,0 +1,59 @@
+# Cumulative assumptions
+
+Every assumption made while building I-ITSM, numbered so the report can cite them. Updated every phase.
+
+## Phase 0 (plan)
+
+1. Domain model and ORM models are separate classes with mappers in `repositories/` (keeps domain framework-free).
+2. Sync SQLAlchemy + psycopg 3, not async — simpler, sufficient for demo scale.
+3. Roles: inheritance only User → Employee / Technician / Administrator. "Team Lead" = Technician with `is_team_lead`; "System Admin" / "IT Manager" = Administrator with `admin_level`. Self-registration always creates an Employee; admins create technicians/admins.
+4. Lifecycle NEW → CLASSIFIED → ASSIGNED → ACKNOWLEDGED → IN_PROGRESS → RESOLVED → VERIFIED → CLOSED, plus: IN_PROGRESS ⇄ PENDING_INFO ("request more info"), RESOLVED → IN_PROGRESS (employee rejects resolution / reopen), ASSIGNED → ASSIGNED (reassign). No state skipping.
+5. NEW → CLASSIFIED is automatic on create (category + priority + SLA computed). CLASSIFIED → ASSIGNED via auto-assign (active strategy) or admin manual assign. ACKNOWLEDGED / IN_PROGRESS / RESOLVED by the assigned technician. VERIFIED by the reporting employee (optionally with feedback). CLOSED by technician/admin after VERIFIED; admin may also close a RESOLVED incident unverified for 72 h (audited as override).
+6. Priority: impact, urgency, business criticality each 1–4 (criticality from the service). Base = I × U × C (1–64) × affected-users factor (≤10 ×1.0, 11–100 ×1.25, >100 ×1.5), capped at 64. P1 ≥ 32, P2 ≥ 16, P3 ≥ 6, else P4. Thresholds in one place.
+7. SLA: default policy = PDF table (P1 5 m / 30 m, P2 15 m / 2 h, P3 1 h / 8 h, P4 4 h / 24 h); per-service policy overrides default; neither → `MissingSLAConfigurationError`. Response met on reaching ACKNOWLEDGED; resolution met at RESOLVED. Warning at 75 % elapsed. 24×7 clocks, no business hours; clocks do NOT pause in PENDING_INFO (documented limitation).
+8. Priority change (impact/urgency edit) recalculates deadlines from the original creation time.
+9. SLA status per incident: ON_TRACK / AT_RISK / BREACHED / MET. Each breach kind recorded once in `sla_violations`.
+10. SLA monitor + escalation: one asyncio background loop every 60 s inside the uvicorn process (single-process assumption; multi-worker discussed under scalability).
+11. Escalation for unacknowledged P1 (and P2 if enabled in settings): each level fires after one additional response window past the response deadline. Chain: assigned Technician → Team Lead of same team → System Admin → IT Manager. Each step increments `escalation_level`, notifies, audits.
+12. Duplicates: on create, compare with open incidents on the same service in last 24 h via scikit-learn TF-IDF + cosine similarity. ≥ 0.45 → RELATED link shown. ≥ 0.85 from the same reporter within 30 min → `DuplicateIncidentError` unless resubmitted with `force=true`. Other users' near-duplicates are linked, never blocked.
+13. Category suggestion: keyword score + scikit-learn TF-IDF similarity to centroids of historical resolved incidents; suggested and pre-filled, employee can override. Keywords stored in `categories` table so admin-added categories work immediately.
+14. Assignment: technicians with active ≥ `max_workload` (default 8) excluded; none eligible → `TechnicianUnavailableError`, incident stays CLASSIFIED for admin. Manual assign over cap → `TechnicianWorkloadExceededError`. "Active" = ASSIGNED, ACKNOWLEDGED, IN_PROGRESS, PENDING_INFO. Skill-based requires category ∈ skills. Round-robin cursor in `system_settings`.
+15. Smart recommendation (separate from auto-assignment strategies): skills 40 %, workload 25 %, experience 15 %, past incidents on same service 15 %, availability 5 %; returns top 3 with human-readable reasons.
+16. Channels: in-app (stored, shown in bell), Email and SMS simulated (logged + notifications row, `delivered=true`). Selection: in-app always; email for assignment/resolution/closure; SMS only for P1, SLA violations, escalations.
+17. "Network failure" → `NotificationDeliveryError` (simulated provider can be configured to fail for tests/demo); delivery failure does not roll back the incident change.
+18. "Database failure" → `PersistenceError` wrapping SQLAlchemy errors in repositories, returned as HTTP 503.
+19. Search: 9 criteria — number/ID, created-from/to, status, priority, category, service, technician, SLA status, free text (ILIKE title/description). Paginated (default 20). Employees only see their own incidents.
+20. Auth: JWT access token (HS256, 60 min), no refresh token; stored in `localStorage` (simplicity vs XSS trade-off documented in SECURITY.md). CORS allows only the Vite dev origin.
+21. Real-time: SSE `/api/stream/events`; token passed as query param (EventSource cannot send headers; documented). Pushes to admin/technician dashboards and the notification bell.
+22. Service dependency graph: services declare `depends_on`; correlation flags incidents whose service or upstream dependency has ≥ 3 open incidents in last 2 h as "likely common cause".
+23. Tests: domain + service tests use in-memory repositories (no DB). API tests use SQLite in-memory via the same SQLAlchemy models so `pytest` needs no setup — portable column types only (JSON, not JSONB/ARRAY). Postgres used for the real app and seed.
+24. Incident number = `INC` + (1000 + id).
+25. Timestamps stored UTC (timestamptz); frontend displays local time.
+26. One feedback per incident (rating 1–5 + comment), reporter only, at/after RESOLVED → VERIFIED.
+27. Service analysis dashboard: incident count per service + mean time to resolve (MTTR).
+28. Provide both `.sh` and `.ps1` run scripts.
+
+## Phase 1 (backend core)
+
+29. **Repo layout**: the plan's `i-itsm/` folder is this repository's root (`backend/`, `docs/`, run scripts at top level).
+30. **Library pins**: SQLAlchemy resolved to 2.1.8 (same typed 2.0-style API). Starlette 1.10 deprecates `httpx` for `TestClient`, so `httpx2` is pinned instead. `email-validator`/`EmailStr` dropped because it rejects reserved demo domains (`.test`, `.local`); email format is validated once in the domain.
+31. **AuditTrail ownership (deviation from the original plan wording)**: `Incident` composes `IncidentSLA`, its `IncidentState` and its `Comment`s. `AuditTrail` is an append-only collection keyed by incident id, written only by the `AuditLogger` observer and returned by `IncidentService.audit_trail()`. Reason: single responsibility; the Incident cannot forget or fake an audit entry, and audit also covers non-incident events (user created, setting changed).
+32. Incident number is derived (`INC` + 1000 + id), not stored; "INC1005" is parsed back to id 5 for search.
+33. In Phase 1 a category is required when reporting; Phase 2 adds automatic category suggestion when it is omitted.
+34. Visibility: employees see only incidents they reported; technicians and administrators see all. Internal notes are visible to staff only.
+35. Only the **assigned technician** may acknowledge, start work, request info and resolve. Administrators do not do technician work; they (re)assign. A VERIFIED incident may be closed by the assignee or an administrator.
+36. If no technician is eligible, the incident stays CLASSIFIED (logged); an administrator can retry auto-assignment or assign manually.
+37. Notifications: one stored row per channel. Users are not notified about their own actions (except the "incident received" confirmation). Failed deliveries are stored with `delivered=false` and the error text.
+38. `incidents.sla_status` is a denormalised column (refreshed on every save and by the monitor) for fast filtering; the source of truth is the `IncidentSLA` domain object.
+39. SLA targets are snapshotted into the incident at classification, so editing a policy does not move existing deadlines. A priority change re-reads the policy for the new priority and rebases deadlines on the original creation time.
+40. Breach is strict (`now > due`); warning is inclusive (`elapsed >= threshold`). Each warning and each breach is reported once per target (response, resolution).
+41. Passwords: 8-128 characters, at least one letter and one digit. Login returns the same error for unknown email, wrong password and deactivated account (no user enumeration; a dummy hash is verified for unknown emails to equalise timing).
+42. JWT signature is verified by PyJWT; expiry is checked against the injectable `Clock` so it is testable. A token stops working if the user is deactivated or their role changes.
+43. Round-robin cursor = id of the last auto-assigned technician (`system_settings`), updated by every automatic assignment.
+44. Skill-based assignment does not fall back: if no skilled technician is free it raises `TechnicianUnavailableError` (admin may switch strategy or assign manually). Experience-based prefers skilled technicians and falls back to anyone eligible.
+45. Reopen is only possible from RESOLVED (the reporter rejects the resolution); it clears `resolved_at`, and the resolution clock keeps running from the original start.
+46. Feedback: once per incident, by the reporter, when RESOLVED/VERIFIED/CLOSED; `verify` can carry the rating directly.
+47. Error-to-HTTP mapping: 401 authentication, 403 unauthorized operation, 404 not found, 409 invalid transition / conflict / assignment failure, 422 invalid input or missing SLA configuration, 502 notification delivery, 503 database failure. Body: `{"error": {"code", "message", "details"}}`.
+48. All datetimes are normalised to UTC when loaded (SQLite returns naive values; PostgreSQL returns the session time zone).
+49. Phase 1 HTTP surface is `/api/health` and `/api/auth/*`; all other routers arrive in Phase 2.
+50. The `.ps1` script mirrors the `.sh` script but could not be executed here (no PowerShell on the dev machine).
