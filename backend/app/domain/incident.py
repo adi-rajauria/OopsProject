@@ -378,12 +378,14 @@ class Incident:
         question = self._require_text(question, "question")
         self._moved(Transition.REQUEST_INFO, actor, now, detail=question[:120])
         self._add_comment(actor, CommentKind.INFO_REQUEST, question, False, now)
+        self._record_sla_findings(self._sla.pause(now))
 
     def provide_info(self, actor: User, answer: str, now: datetime) -> None:
         self._require_reporter(actor, "answer information requests on")
         answer = self._require_text(answer, "answer")
         self._moved(Transition.PROVIDE_INFO, actor, now, detail=answer[:120])
         self._add_comment(actor, CommentKind.INFO_REPLY, answer, False, now)
+        self._sla.resume(now)
 
     def resolve(self, actor: User, summary: str, now: datetime) -> None:
         self._require_assignee(actor, "resolve")

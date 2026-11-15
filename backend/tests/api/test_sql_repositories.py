@@ -5,6 +5,7 @@ from datetime import timedelta
 import pytest
 
 from app.domain.category import Category
+from app.domain.clock import ensure_utc
 from app.domain.enums import IncidentStatus, Priority, Role, SLATarget
 from app.domain.exceptions import PersistenceError
 from app.domain.factories import NewIncidentData, UserFactory
@@ -12,6 +13,7 @@ from app.domain.service import ITService
 from app.domain.sla import SLAPolicy
 from app.domain.users import Technician, TechnicianProfile
 from app.main import build_infrastructure
+from app.repositories.orm import IncidentRow
 from app.repositories.sql_repositories import SqlAlchemyUnitOfWork
 from app.services.container import build_container
 from tests.conftest import PDF_SLA, START
@@ -78,3 +80,34 @@ def test_database_failure_is_reported_as_persistence_error(session_factory, cloc
         uow.services.add(ITService(id=None, code="DUP", name="First", business_criticality=2))
         with pytest.raises(PersistenceError):
             uow.services.add(ITService(id=None, code="DUP", name="Second", business_criticality=2))
+
+
+def test_paused_sla_clock_is_persisted(settings, session_factory, clock):
+    infra = build_infrastructure(settings, clock)
+    with session_factory() as session:
+        uow = SqlAlchemyUnitOfWork(session, clock)
+        pay, category, employee, tech = seed(uow)
+        incidents = build_container(uow, infra).incidents
+        incident = incidents.report(employee, NewIncidentData(
+            title="Refunds stuck", description="Refund requests stay pending for every customer",
+            service_id=pay.id, impact=4, urgency=4, affected_users=20, category_id=category.id))
+        incidents.acknowledge(incident.id, tech)
+        incidents.start_work(incident.id, tech)
+        incidents.request_info(incident.id, tech, "Which order ids are affected?")
+        incident_id = incident.id
+
+    with session_factory() as session:
+        loaded = SqlAlchemyUnitOfWork(session, clock).incidents.get(incident_id)
+        assert loaded.sla.is_paused and loaded.sla.paused_at == START
+
+    clock.advance(minutes=20)
+    with session_factory() as session:
+        uow = SqlAlchemyUnitOfWork(session, clock)
+        build_container(uow, infra).incidents.provide_info(incident_id, employee, "Orders 1001 to 1050")
+
+    with session_factory() as session:
+        loaded = SqlAlchemyUnitOfWork(session, clock).incidents.get(incident_id)
+        assert not loaded.sla.is_paused and loaded.sla.paused_seconds == 20 * 60
+        assert loaded.sla.resolution_due_at == START + timedelta(minutes=50)
+        row_due = session.get(IncidentRow, incident_id).resolution_due_at
+        assert ensure_utc(row_due) == START + timedelta(minutes=50)

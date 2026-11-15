@@ -88,6 +88,7 @@ class SLAStatus(StrEnum):
     ON_TRACK = "ON_TRACK"
     AT_RISK = "AT_RISK"
     BREACHED = "BREACHED"
+    PAUSED = "PAUSED"
     MET = "MET"
 
 

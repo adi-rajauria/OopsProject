@@ -152,8 +152,8 @@ class IncidentTransitioned(IncidentEvent):
     _TEXT = {
         Transition.ACKNOWLEDGE: "Technician acknowledged incident",
         Transition.START_WORK: "Investigation started",
-        Transition.REQUEST_INFO: "Technician requested more information",
-        Transition.PROVIDE_INFO: "Reporter provided requested information",
+        Transition.REQUEST_INFO: "Technician requested more information (SLA clock paused)",
+        Transition.PROVIDE_INFO: "Reporter provided requested information (SLA clock resumed)",
         Transition.RESOLVE: "Incident marked RESOLVED",
         Transition.REOPEN: "Resolution rejected; incident reopened",
         Transition.VERIFY: "Reporter verified the resolution",

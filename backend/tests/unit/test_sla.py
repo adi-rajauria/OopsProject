@@ -72,3 +72,27 @@ def test_rebasing_keeps_original_start_time():
 def test_invalid_sla_policy_is_rejected(response, resolution, warn):
     with pytest.raises(InvalidInputError):
         policy(response=response, resolution=resolution, warn=warn)
+
+
+def test_paused_clock_raises_nothing_and_extends_resolution_deadline():
+    clock = IncidentSLA.from_policy(policy(), START)  # P1: 5 / 30 min
+    clock.mark_responded(START + timedelta(minutes=2))
+    assert clock.pause(START + timedelta(minutes=10)) == []
+    paused_at = START + timedelta(minutes=40)  # well past the original 30-min deadline
+    assert clock.evaluate(paused_at) == [] and clock.status(paused_at) is SLAStatus.PAUSED
+    assert clock.elapsed_pct(SLATarget.RESOLUTION, paused_at) == 33.3  # only 10 running minutes count
+    clock.resume(paused_at)
+    assert clock.paused_seconds == 30 * 60 and not clock.is_paused
+    assert clock.resolution_due_at == START + timedelta(minutes=60)
+    assert clock.response_due_at == START + timedelta(minutes=5)  # response target never moves
+    assert [f.kind for f in clock.evaluate(START + timedelta(minutes=60))] == [FindingKind.WARNING]
+    breach = clock.evaluate(START + timedelta(minutes=60, seconds=1))
+    assert [(f.kind, f.target) for f in breach] == [(FindingKind.BREACH, SLATarget.RESOLUTION)]
+
+
+def test_pausing_after_the_deadline_still_reports_the_breach():
+    clock = IncidentSLA.from_policy(policy(), START)
+    clock.mark_responded(START + timedelta(minutes=2))
+    findings = clock.pause(START + timedelta(minutes=31))
+    assert [(f.kind, f.target) for f in findings] == [(FindingKind.BREACH, SLATarget.RESOLUTION)]
+    assert clock.status(START + timedelta(minutes=50)) is SLAStatus.BREACHED

@@ -116,6 +116,11 @@ class IncidentSLA:
 
     Rule: a target is breached when the clock passes its deadline strictly
     (now > due). A warning is raised once when elapsed >= warning threshold.
+
+    Pausing: while the incident waits for the reporter (PENDING_INFO) the clock is
+    paused - no warnings or breaches are raised, and on resume the resolution
+    deadline moves later by the paused time. The response target is never affected
+    because PENDING_INFO is only reachable after acknowledgement.
     """
 
     def __init__(
@@ -132,6 +137,8 @@ class IncidentSLA:
         resolution_warned: bool = False,
         response_breached: bool = False,
         resolution_breached: bool = False,
+        paused_seconds: int = 0,
+        paused_at: datetime | None = None,
     ) -> None:
         self._policy_id = policy_id
         self._response_minutes = response_minutes
@@ -142,6 +149,8 @@ class IncidentSLA:
         self._resolved_at = resolved_at
         self._warned = {SLATarget.RESPONSE: response_warned, SLATarget.RESOLUTION: resolution_warned}
         self._breached = {SLATarget.RESPONSE: response_breached, SLATarget.RESOLUTION: resolution_breached}
+        self._paused_total = timedelta(seconds=paused_seconds)  # completed pauses
+        self._paused_at = paused_at  # start of the current pause, None when running
 
     @classmethod
     def from_policy(cls, policy: SLAPolicy, started_at: datetime) -> "IncidentSLA":
@@ -159,6 +168,8 @@ class IncidentSLA:
         clock._responded_at = self._responded_at
         clock._resolved_at = self._resolved_at
         clock._breached = dict(self._breached)
+        clock._paused_total = self._paused_total
+        clock._paused_at = self._paused_at
         return clock
 
     # --- read-only view ----------------------------------------------------------------
@@ -191,12 +202,29 @@ class IncidentSLA:
         return self._resolved_at
 
     @property
+    def is_paused(self) -> bool:
+        return self._paused_at is not None
+
+    @property
+    def paused_at(self) -> datetime | None:
+        return self._paused_at
+
+    @property
+    def paused_seconds(self) -> int:
+        """Total of completed pauses (the current pause is added on resume)."""
+        return int(self._paused_total.total_seconds())
+
+    def _paused_until(self, moment: datetime) -> timedelta:
+        current = moment - self._paused_at if self._paused_at is not None else timedelta()
+        return self._paused_total + current
+
+    @property
     def response_due_at(self) -> datetime:
         return self._started_at + timedelta(minutes=self._response_minutes)
 
     @property
     def resolution_due_at(self) -> datetime:
-        return self._started_at + timedelta(minutes=self._resolution_minutes)
+        return self._started_at + timedelta(minutes=self._resolution_minutes) + self._paused_total
 
     def was_warned(self, target: SLATarget) -> bool:
         return self._warned[target]
@@ -212,8 +240,12 @@ class IncidentSLA:
 
     def elapsed_pct(self, target: SLATarget, now: datetime) -> float:
         end = self._met_at(target) or now
-        total = (self.due_at(target) - self._started_at).total_seconds()
-        return round(100 * (end - self._started_at).total_seconds() / total, 1)
+        elapsed = end - self._started_at
+        minutes = self._response_minutes
+        if target is SLATarget.RESOLUTION:
+            elapsed -= self._paused_until(end)
+            minutes = self._resolution_minutes
+        return round(100 * elapsed.total_seconds() / (minutes * 60), 1)
 
     def active_target(self) -> SLATarget | None:
         if self._responded_at is None:
@@ -228,6 +260,8 @@ class IncidentSLA:
         pending = [t for t in SLATarget if self._met_at(t) is None]
         if not pending:
             return SLAStatus.MET
+        if self.is_paused:
+            return SLAStatus.PAUSED
         if any(now > self.due_at(t) for t in pending):
             return SLAStatus.BREACHED
         if any(self.elapsed_pct(t, now) >= self._warning_pct for t in pending):
@@ -236,8 +270,11 @@ class IncidentSLA:
 
     # --- behaviour ---------------------------------------------------------------------
     def evaluate(self, now: datetime) -> list[SLAFinding]:
-        """Return *new* warnings/breaches since the last evaluation (each reported once)."""
+        """Return *new* warnings/breaches since the last evaluation (each reported once).
+        A paused clock never produces findings."""
         findings: list[SLAFinding] = []
+        if self.is_paused:
+            return findings
         for target in SLATarget:
             if self._met_at(target) is not None or self._breached[target]:
                 continue
@@ -259,6 +296,18 @@ class IncidentSLA:
         findings = self.evaluate(now)
         self._resolved_at = now
         return findings
+
+    def pause(self, now: datetime) -> list[SLAFinding]:
+        """Stop the clock; anything already overdue is reported first."""
+        findings = self.evaluate(now)
+        if not self.is_paused:
+            self._paused_at = now
+        return findings
+
+    def resume(self, now: datetime) -> None:
+        if self._paused_at is not None:
+            self._paused_total += now - self._paused_at
+            self._paused_at = None
 
     def reopen(self) -> None:
         self._resolved_at = None

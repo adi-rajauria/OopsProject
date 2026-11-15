@@ -1,6 +1,6 @@
 # Test cases
 
-Run: `cd backend && .venv/bin/pytest` (64 test functions, 93 cases with parametrisation; all pass in under 1 s).
+Run: `cd backend && .venv/bin/pytest` (68 test functions, 97 cases with parametrisation; all pass in about 2 s).
 Types: **N** normal operation · **B** boundary · **I** invalid input · **E** exception · **A** authorization · **R** business rule · **S** state transition.
 
 Fixture world (`tests/conftest.py`): services PAY (criticality 4), MAIL (3), WIKI (1); categories APPLICATION, NETWORK, DATABASE, HARDWARE;
@@ -85,6 +85,15 @@ Clock fixed at 2026-11-16 10:00 UTC and advanced explicitly.
 | TC-62 | CORS restricted | preflight from localhost:5173 and evil.example | allowed / no CORS header | A |
 | TC-63 | SQL repositories round trip | report, ack, start, internal note, SLA check at +42 min, reload in new session | state, priority, SLA flags, comments, audit, violation, workload, service dependency and technician skills all preserved | N |
 | TC-64 | Database failure | two services with the same code | `PersistenceError` | E |
+
+## SLA pause while waiting for the reporter (added after the assumption 7 change)
+
+| ID | Description | Input | Expected | Type |
+|---|---|---|---|---|
+| TC-65 | Paused clock is silent and extends the resolution deadline | P1, responded +2, pause +10, evaluate +40, resume +40 | no findings, status PAUSED, 33.3 % elapsed; resolution due +60 (response due unchanged +5); warning at +60, breach at +60:01 | R/B |
+| TC-66 | Pausing after the deadline still records the breach | pause at +31 on a 30-min target | RESOLUTION breach reported, status stays BREACHED | R |
+| TC-67 | Pause through the service and the background monitor | request info at +10, monitor at +45, reply at +45, monitor at +64 / +66 | 0 violations, status PAUSED, due +65; 0 then 1 violation; audit shows "SLA clock paused/resumed" | R/S |
+| TC-68 | Pause state persisted | request info, reload; reply after 20 min, reload | `is_paused`, `paused_at` stored; then 1200 s paused, resolution due +50 in domain and in `incidents.resolution_due_at` | N |
 
 ## Spec exception coverage
 

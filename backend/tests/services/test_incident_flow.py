@@ -240,3 +240,27 @@ def test_technician_workload_view(world):
     world.report(title="Card payments time out", category_id=world.categories["DATABASE"].id)
     load = {w.technician.full_name: w.active_incidents for w in world.container.assignment.workload()}
     assert load == {"Asha AppTech": 1, "Nikhil NetTech": 0, "Dia DbTech": 1}
+
+
+def test_sla_clock_pauses_while_waiting_for_reporter(world):
+    svc, sla, tech = world.container.incidents, world.container.sla, world.tech("t_app")
+    incident = world.report()  # P1: resolution due at +30 min
+    world.clock.advance(minutes=1)
+    svc.acknowledge(incident.id, tech)
+    svc.start_work(incident.id, tech)
+    world.clock.advance(minutes=9)
+    svc.request_info(incident.id, tech, "Does it fail for card and UPI payments?")  # paused at +10
+
+    world.clock.advance(minutes=35)  # +45: original deadline long gone
+    assert sla.run_checks().violations == 0
+    assert svc.get(incident.id, tech).sla_status(world.clock.now()) is SLAStatus.PAUSED
+    resumed = svc.provide_info(incident.id, world.employee, "Both fail with the same error")  # resumed at +45
+    assert resumed.sla.resolution_due_at == START + timedelta(minutes=65)
+
+    world.clock.advance(minutes=19)  # +64
+    assert sla.run_checks().violations == 0
+    world.clock.advance(minutes=2)  # +66
+    assert sla.run_checks().violations == 1
+    descriptions = [r.description for r in world.uow.audit.trail_for(incident.id)]
+    assert any("(SLA clock paused)" in d for d in descriptions)
+    assert any("(SLA clock resumed)" in d for d in descriptions)

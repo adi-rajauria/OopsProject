@@ -134,7 +134,8 @@ def _sla_to_domain(row: IncidentRow) -> IncidentSLA | None:
         started_at=ensure_utc(row.created_at), responded_at=ensure_utc(row.acknowledged_at),
         resolved_at=ensure_utc(row.resolved_at), response_warned=row.response_warned,
         resolution_warned=row.resolution_warned, response_breached=row.response_breached,
-        resolution_breached=row.resolution_breached,
+        resolution_breached=row.resolution_breached, paused_seconds=row.sla_paused_seconds or 0,
+        paused_at=ensure_utc(row.sla_paused_at),
     )
 
 
@@ -194,6 +195,8 @@ def incident_to_row(incident: Incident, row: IncidentRow, now: datetime) -> list
         row.resolution_warned = sla.was_warned(SLATarget.RESOLUTION)
         row.response_breached = sla.is_breached(SLATarget.RESPONSE)
         row.resolution_breached = sla.is_breached(SLATarget.RESOLUTION)
+        row.sla_paused_seconds = sla.paused_seconds
+        row.sla_paused_at = sla.paused_at
         row.acknowledged_at = sla.responded_at
         row.resolved_at = sla.resolved_at
         row.sla_status = sla.status(now).value

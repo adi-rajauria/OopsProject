@@ -139,6 +139,8 @@ class IncidentRow(Base):
     resolution_warned: Mapped[bool] = mapped_column(Boolean, default=False)
     response_breached: Mapped[bool] = mapped_column(Boolean, default=False)
     resolution_breached: Mapped[bool] = mapped_column(Boolean, default=False)
+    sla_paused_seconds: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    sla_paused_at: Mapped[datetime | None] = mapped_column(TZDateTime)
     sla_status: Mapped[str | None] = mapped_column(String(10), index=True)
     acknowledged_at: Mapped[datetime | None] = mapped_column(TZDateTime)
     resolved_at: Mapped[datetime | None] = mapped_column(TZDateTime)
