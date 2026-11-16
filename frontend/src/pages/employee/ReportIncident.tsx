@@ -1,0 +1,225 @@
+import { useEffect, useState, type FormEvent } from "react";
+import { Link, useNavigate } from "react-router";
+import { ApiError } from "../../api/client";
+import { incidentsApi, intelligenceApi, lookupsApi } from "../../api/endpoints";
+import type { CategorySuggestion, IncidentLink } from "../../api/types";
+import { StatusBadge } from "../../components/badges";
+import { errorMessage, useToast } from "../../components/Toasts";
+import { Card, ErrorMessage, PageHeader, Spinner } from "../../components/ui";
+import { useAsync, useDebounced } from "../../hooks/useAsync";
+import { IMPACT_OPTIONS, URGENCY_OPTIONS } from "../../lib/format";
+
+function ScaleChooser({ name, value, onChange, options }: {
+  name: string;
+  value: number;
+  onChange: (v: number) => void;
+  options: { value: number; label: string; hint: string }[];
+}) {
+  return (
+    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4" role="radiogroup" aria-label={name}>
+      {options.map((o) => (
+        <button
+          type="button"
+          role="radio"
+          aria-checked={value === o.value}
+          key={o.value}
+          onClick={() => onChange(o.value)}
+          className={`rounded-lg border px-3 py-2 text-left transition ${
+            value === o.value
+              ? "border-[var(--accent)] bg-[var(--accent-soft)] ring-1 ring-[var(--accent)]"
+              : "border-slate-200 bg-white hover:border-slate-300"
+          }`}
+        >
+          <div className="text-sm font-medium text-slate-800">{o.label}</div>
+          <div className="text-xs text-slate-500">{o.hint}</div>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+export function ReportIncidentPage() {
+  const toast = useToast();
+  const navigate = useNavigate();
+  const lookups = useAsync(() => Promise.all([lookupsApi.services(), lookupsApi.categories()]), []);
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [serviceId, setServiceId] = useState<number | "">("");
+  const [categoryId, setCategoryId] = useState<number | "">("");
+  const [impact, setImpact] = useState(2);
+  const [urgency, setUrgency] = useState(2);
+  const [affected, setAffected] = useState(1);
+  const [suggestions, setSuggestions] = useState<CategorySuggestion[]>([]);
+  const [similar, setSimilar] = useState<IncidentLink[]>([]);
+  const [blocking, setBlocking] = useState<IncidentLink[] | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string>();
+
+  // Live intelligence while typing (debounced so we don't call the API on every keystroke).
+  // Debounce a string (stable identity) so the effect only fires when the text really changed.
+  const debouncedKey = useDebounced(JSON.stringify({ title, description, serviceId }), 600);
+  useEffect(() => {
+    const text = JSON.parse(debouncedKey) as { title: string; description: string; serviceId: number | "" };
+    if (text.title.trim().length < 4) {
+      setSuggestions([]);
+      setSimilar([]);
+      return;
+    }
+    intelligenceApi.suggestCategory(text.title, text.description).then(setSuggestions).catch(() => setSuggestions([]));
+    if (text.serviceId !== "") {
+      intelligenceApi.checkDuplicates(text.title, text.description, text.serviceId).then(setSimilar).catch(() => setSimilar([]));
+    } else {
+      setSimilar([]);
+    }
+  }, [debouncedKey]);
+
+  if (lookups.error) return <ErrorMessage error={lookups.error} onRetry={lookups.reload} />;
+  if (!lookups.data) return <Spinner />;
+  const [services, categories] = lookups.data;
+  const top = suggestions[0];
+
+  const submit = async (e: FormEvent | null, force = false) => {
+    e?.preventDefault();
+    if (serviceId === "") {
+      setError("Please choose the affected service");
+      return;
+    }
+    setBusy(true);
+    setError(undefined);
+    try {
+      const created = await incidentsApi.create({
+        title, description, service_id: serviceId, impact, urgency, affected_users: affected,
+        category_id: categoryId === "" ? null : categoryId, force,
+      });
+      toast.success(
+        `${created.number} created · ${created.priority} · ${created.technician ? `assigned to ${created.technician.name}` : "waiting for assignment"}`,
+      );
+      navigate(`/incidents/${created.id}`);
+    } catch (err) {
+      if (err instanceof ApiError && err.code === "DUPLICATE_INCIDENT") {
+        setBlocking((err.details.matches as IncidentLink[]) ?? []);
+      } else {
+        setError(errorMessage(err));
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <>
+      <PageHeader title="Report an incident" subtitle="Describe what is wrong. We will classify, prioritise and route it automatically." />
+      <div className="grid gap-6 lg:grid-cols-3">
+        <form onSubmit={(e) => submit(e)} className="card card-body space-y-5 lg:col-span-2">
+          <div>
+            <label className="label" htmlFor="title">Short summary</label>
+            <input id="title" className="input" required minLength={5} maxLength={200} value={title}
+                   placeholder="e.g. Payment application unavailable" onChange={(e) => setTitle(e.target.value)} />
+          </div>
+          <div>
+            <label className="label" htmlFor="desc">What happened?</label>
+            <textarea id="desc" className="input min-h-32" required minLength={10} maxLength={5000} value={description}
+                      placeholder="What were you doing, what did you expect, what error did you see?"
+                      onChange={(e) => setDescription(e.target.value)} />
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="label" htmlFor="service">Affected service</label>
+              <select id="service" className="input" required value={serviceId}
+                      onChange={(e) => setServiceId(e.target.value ? Number(e.target.value) : "")}>
+                <option value="">Choose a service…</option>
+                {services.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="label" htmlFor="category">Category</label>
+              <select id="category" className="input" value={categoryId}
+                      onChange={(e) => setCategoryId(e.target.value ? Number(e.target.value) : "")}>
+                <option value="">Let the system decide{top ? ` (${top.name})` : ""}</option>
+                {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+              {top && categoryId !== top.category_id && (
+                <p className="hint">
+                  Suggested: <strong>{top.name}</strong> ({Math.round(top.confidence * 100)}% · {top.reason}){" "}
+                  <button type="button" className="link" onClick={() => setCategoryId(top.category_id)}>Use it</button>
+                </p>
+              )}
+            </div>
+          </div>
+          <div>
+            <span className="label">Who is affected? (impact)</span>
+            <ScaleChooser name="Impact" value={impact} onChange={setImpact} options={IMPACT_OPTIONS} />
+          </div>
+          <div>
+            <span className="label">How urgent is it?</span>
+            <ScaleChooser name="Urgency" value={urgency} onChange={setUrgency} options={URGENCY_OPTIONS} />
+          </div>
+          <div className="max-w-xs">
+            <label className="label" htmlFor="affected">Roughly how many people are affected?</label>
+            <input id="affected" type="number" min={1} max={100000} className="input" value={affected}
+                   onChange={(e) => setAffected(Math.max(1, Number(e.target.value) || 1))} />
+          </div>
+
+          {blocking && (
+            <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900" role="alert">
+              <p className="font-medium">You reported something almost identical a few minutes ago:</p>
+              <ul className="mt-2 list-disc pl-5">
+                {blocking.map((m) => (
+                  <li key={m.incident_id}>
+                    <Link className="link" to={`/incidents/${m.incident_id}`}>{m.number}</Link> {m.title}
+                    {" "}({Math.round(m.similarity * 100)}% similar)
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-3 flex gap-2">
+                <button type="button" className="btn-secondary btn-sm" onClick={() => setBlocking(null)}>Edit my report</button>
+                <button type="button" className="btn-primary btn-sm" disabled={busy} onClick={() => submit(null, true)}>
+                  It is a different problem, submit anyway
+                </button>
+              </div>
+            </div>
+          )}
+          {error && <ErrorMessage error={error} />}
+          <div className="flex justify-end gap-2">
+            <Link className="btn-secondary" to="/employee">Cancel</Link>
+            <button className="btn-primary" disabled={busy}>{busy ? "Submitting…" : "Submit incident"}</button>
+          </div>
+        </form>
+
+        <aside className="space-y-4">
+          <Card title="Is it already reported?">
+            {serviceId === "" || title.trim().length < 4 ? (
+              <p className="text-sm text-slate-500">Choose a service and type a summary to check for similar open incidents.</p>
+            ) : similar.length === 0 ? (
+              <p className="text-sm text-slate-500">No similar open incidents on this service in the last 24 hours.</p>
+            ) : (
+              <ul className="space-y-3">
+                {similar.map((m) => (
+                  <li key={m.incident_id} className="text-sm">
+                    <div className="flex items-center justify-between gap-2">
+                      <Link className="link font-mono text-xs" to={`/incidents/${m.incident_id}`}>{m.number}</Link>
+                      <span className="text-xs text-slate-500">{Math.round(m.similarity * 100)}% similar</span>
+                    </div>
+                    <p className="text-slate-800">{m.title}</p>
+                    <StatusBadge status={m.status} />
+                  </li>
+                ))}
+                <li className="text-xs text-slate-500">
+                  You can still submit: your report will be linked to these so the technician sees the full picture.
+                </li>
+              </ul>
+            )}
+          </Card>
+          <Card title="What happens next">
+            <ol className="list-decimal space-y-1 pl-5 text-sm text-slate-600">
+              <li>Priority is calculated from impact, urgency and how critical the service is.</li>
+              <li>The matching SLA sets response and resolution deadlines.</li>
+              <li>A suitable technician is assigned and notified.</li>
+              <li>You get updates here, in the bell and by e-mail.</li>
+            </ol>
+          </Card>
+        </aside>
+      </div>
+    </>
+  );
+}

@@ -78,3 +78,16 @@ Every assumption made while building I-ITSM, numbered so the report can cite the
 66. The SLA risk score caps the elapsed contribution at 150 % so very late incidents remain comparable.
 67. `POST /api/admin/sla/check-now` runs one monitor pass on demand (for the demo); the background monitor still runs every 60 s.
 68. Code is formatted with ruff (120 columns); ruff is a dev tool only, not a project dependency.
+
+## Phase 3 (frontend)
+
+69. The UI calls the API through the Vite dev-server proxy (`/api` → `127.0.0.1:8000`), so the browser sees one origin (no CORS needed for the UI, and it is still restricted for direct calls). `ITSM_API_URL` overrides the proxy target.
+70. Action buttons on an incident come from the backend's `available_actions`, which the domain computes (`Incident.available_actions`). The frontend holds no business rules beyond input hints, and the backend stays the authority.
+71. A distinct GUI per role: its own navigation, home page, portal name and accent colour (employee blue, technician green, administrator violet). Shared screens (search, incident detail, notifications) adapt to the role.
+72. Live updates use one SSE connection per signed-in session; pages refetch when a relevant event arrives. The notification bell also polls every 60 s as a fallback.
+73. On any 401 (expired or revoked token) the app clears the token and returns to the login page.
+74. Date filters use the user's local time zone and are converted to UTC day boundaries before calling the API.
+75. No chart or component library: charts are CSS bars and inline SVG (fewer dependencies, as planned).
+76. The login page has one-click demo-account buttons for the recorded demo; they use the published demo password.
+77. Frontend stack verified on Node 26.13 / npm 11.20: React 19.3, React Router 8.5 (declarative mode), Vite 8.3, Tailwind 4.3, TypeScript 7.0 (native compiler), all exact-pinned with a lockfile.
+78. UI verification is a headless-browser smoke test (Playwright, outside the project) that visits every page for every role, runs one full cross-role workflow and checks phone width (390 px). There are no automated frontend unit tests: the testing budget goes to the backend, where the business rules live.

@@ -54,7 +54,31 @@ alembic upgrade head
 uvicorn app.main:create_app --factory --reload
 ```
 
-## 5. Demo data
+## 5. Web UI (frontend)
+
+Requires Node 26 LTS (verified with Node 26.13 / npm 11.20).
+
+```bash
+./run_frontend.sh          # macOS / Linux  (installs with `npm ci` on first run)
+.\run_frontend.ps1         # Windows PowerShell
+```
+
+Open <http://127.0.0.1:5173>. The Vite dev server proxies `/api` to the backend on `127.0.0.1:8000`
+(override with `ITSM_API_URL=http://host:port`), so the browser only ever talks to one origin, including the
+live event stream. The login page has one-click buttons for the three demo roles.
+
+Manual equivalent: `cd frontend && npm ci && npm run dev`. Production build: `npm run build` (type-checks, then
+bundles into `frontend/dist`).
+
+| Package | Version | Note |
+|---|---|---|
+| React / React DOM | 19.3.1 | |
+| React Router | 8.5.1 | declarative `<BrowserRouter>` API |
+| Vite / @vitejs/plugin-react | 8.3.8 / 6.3.0 | |
+| Tailwind CSS (+ @tailwindcss/vite) | 4.3.5 | CSS-first config in `src/index.css` |
+| TypeScript | 7.0.2 | the new native compiler; `tsc` works unchanged |
+
+## 6. Demo data
 
 ```bash
 cd backend
@@ -89,7 +113,7 @@ Times are relative to "now", so re-seed shortly before a demo (open P1s keep esc
 | Employee | karan@itsm.demo | Karan Mehta | Engineering |
 | Employee | isha@itsm.demo | Isha Bose | Customer Support |
 
-## 6. Tests
+## 7. Tests
 
 ```bash
 cd backend

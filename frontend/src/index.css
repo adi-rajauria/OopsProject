@@ -1,0 +1,99 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+/* Each role gets its own accent colour so the three UIs are visibly distinct. */
+:root {
+  --accent: #4f46e5;
+  --accent-strong: #4338ca;
+  --accent-soft: #eef2ff;
+}
+[data-role="EMPLOYEE"] {
+  --accent: #0284c7;
+  --accent-strong: #0369a1;
+  --accent-soft: #e0f2fe;
+}
+[data-role="TECHNICIAN"] {
+  --accent: #059669;
+  --accent-strong: #047857;
+  --accent-soft: #d1fae5;
+}
+[data-role="ADMINISTRATOR"] {
+  --accent: #7c3aed;
+  --accent-strong: #6d28d9;
+  --accent-soft: #ede9fe;
+}
+
+@layer base {
+  body {
+    @apply bg-slate-50 text-slate-800 antialiased;
+  }
+  h1 {
+    @apply text-2xl font-semibold text-slate-900;
+  }
+  h2 {
+    @apply text-lg font-semibold text-slate-900;
+  }
+  h3 {
+    @apply text-sm font-semibold tracking-wide text-slate-500 uppercase;
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-xl border border-slate-200 bg-white shadow-sm;
+  }
+  .card-body {
+    @apply p-5;
+  }
+  .btn,
+  .btn-primary,
+  .btn-secondary,
+  .btn-danger,
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-lg px-3.5 py-2 text-sm font-medium transition
+      disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply bg-[var(--accent)] text-white shadow-sm hover:bg-[var(--accent-strong)];
+  }
+  .btn-secondary {
+    @apply border border-slate-300 bg-white text-slate-700 hover:bg-slate-50;
+  }
+  .btn-danger {
+    @apply bg-rose-600 text-white hover:bg-rose-700;
+  }
+  .btn-ghost {
+    @apply text-slate-600 hover:bg-slate-100;
+  }
+  .btn-sm {
+    @apply px-2.5 py-1 text-xs;
+  }
+  .input {
+    @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm outline-none
+      focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-soft)];
+  }
+  .label {
+    @apply mb-1 block text-sm font-medium text-slate-700;
+  }
+  .hint {
+    @apply mt-1 text-xs text-slate-500;
+  }
+  .data-table {
+    @apply w-full text-left text-sm;
+  }
+  .data-table th {
+    @apply border-b border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold tracking-wide text-slate-500 uppercase;
+  }
+  .data-table td {
+    @apply border-b border-slate-100 px-3 py-2.5 align-top;
+  }
+  .data-table tbody tr:hover td {
+    @apply bg-slate-50;
+  }
+  .link {
+    @apply font-medium text-[var(--accent)] hover:underline;
+  }
+}

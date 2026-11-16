@@ -59,8 +59,9 @@ class SLARiskAnalyzer:
         elapsed = sla.elapsed_pct(target, now)
         weight = PRIORITY_WEIGHT[incident.priority]
         score = min(elapsed, ELAPSED_CAP) * weight
+        used = f"{elapsed:.0f}% of {target.value.lower()} time used" if elapsed <= 100 else f"{target.value.lower()} target exceeded"
         reasons = [
-            f"{elapsed:.0f}% of {target.value.lower()} time used",
+            used,
             f"{incident.priority.value} weighting x{weight}",
         ]
         if incident.assigned_technician_id is None:
