@@ -14,6 +14,7 @@ Code lives in `backend/app/intelligence/` (pure Python, plus scikit-learn behind
 | 5 | Category suggestion | `intelligence/category_classifier.py` | report form, auto-fill when no category is chosen |
 | + | Service correlation (innovation) | `intelligence/correlation.py` | dependency graph view |
 | + | Suggested resolutions (spec G) | `intelligence/resolution_suggester.py` | incident page (staff); "Try this first" on the report form (self-service) |
+| + | Recurring problem detection | `intelligence/recurring.py` | Service health page |
 | + | Predicted resolution time | `intelligence/resolution_time.py` | incident page, Details card (everyone who can view it) |
 
 ---
@@ -130,7 +131,7 @@ Keywords are data in the `categories` table, so a category an administrator adds
 category it always wins: the audit entry notes "reporter chose it over suggested X". If they pick none, the top suggestion
 is used ("auto-suggested, confidence 0.58"). If nothing scores ≥ 0.12, the reporter is asked to choose.
 
-**Measured on the seed data:** the suggestion equals the final category for **38 of 42** incidents (90 %). The four misses
+**Measured on the seed data:** the suggestion equals the final category for **39 of 43** incidents (91 %). The four misses
 are genuinely ambiguous (e.g. "API gateway returning 502 errors": application or cloud?).
 
 ## Innovation: service dependency correlation
@@ -142,6 +143,31 @@ Over incidents still open:
 - **Upstream cause:** a service with recent incidents that depends on a service which *also* has recent incidents →
   the upstream service is flagged as the likely common cause (e.g. Payments → API Gateway).
 - Node health: HOTSPOT / DEGRADED (any open incident) / HEALTHY, plus edges for the graph view.
+
+## Recurring problem detection
+
+The spec lists "difficulty identifying recurring problems" as a challenge. Duplicate detection and the hotspot look at
+the last 24 h / 2 h, so they catch a **burst**. This feature catches a problem that **keeps coming back** after being fixed.
+
+```
+window      = incidents (any status) created in the last 30 days, grouped per service
+same issue  = TF-IDF similarity (same char n-grams as feature 1) >= 0.25 between two incidents
+groups      = connected components of "same issue" (single-link, computed with union-find),
+              so A~B and B~C put A, B and C in one group
+recurring   = group of >= 3 incidents whose first and last are >= 24 h apart
+sorted by   = still-open incidents, then occurrences, then most recent
+```
+
+Each result shows the service, the latest title, how many times it happened and how many are still open, the date
+range, the **latest fix** and a reason, e.g. "3 similar incidents on Corporate VPN within 12 day(s); it was fixed before
+but came back (1 still open)".
+
+**Calibration on the seed data:** at 0.20 three different database problems (connections, replication lag,
+deadlocks) were wrongly grouped; at 0.35 the real VPN drop-outs were missed; 0.25 and 0.30 find exactly the VPN
+problem and leave the unrelated "VPN client update fails" out. Without the 24 h rule, today's payment outage (4 reports in
+minutes) would also show, but that is a burst the hotspot already reports.
+**Cost:** one TF-IDF fit per incident within a service (O(n²) comparisons per service), which is fine for 30 days of
+one service's incidents; at much larger volumes it would run as a nightly batch job instead.
 
 ## Suggested resolutions (spec feature G)
 

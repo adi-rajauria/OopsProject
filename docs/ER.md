@@ -180,6 +180,6 @@ erDiagram
 ## Sample data
 
 `python -m scripts.seed --reset` creates 18 users, 11 services with dependencies, 9 categories, 7 SLA policies
-(4 defaults + 3 service overrides) and 42 incidents in every lifecycle state (except the transient NEW). The data
+(4 defaults + 3 service overrides) and 43 incidents in every lifecycle state (except the transient NEW). The data
 includes SLA violations, near-duplicate links, escalations, feedback and a deliberately unassigned incident, all generated
 by replaying history through the real services. See `docs/SETUP.md` for the credentials.

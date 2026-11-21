@@ -325,6 +325,19 @@ export interface SuggestedResolution {
   similarity: number;
 }
 
+export interface RecurringProblem {
+  service_id: number;
+  service: string;
+  title: string;
+  occurrences: number;
+  open_count: number;
+  incident_ids: number[];
+  first_seen: string;
+  last_seen: string;
+  latest_fix: string | null;
+  reason: string;
+}
+
 export interface SelfHelpTip {
   title: string;
   resolution: string;

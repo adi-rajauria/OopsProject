@@ -87,7 +87,7 @@ cd backend
 ```
 
 The seeder replays two weeks of history through the real services: 18 users, 11 services with dependencies, 9 categories,
-7 SLA policies and 42 incidents in every state, with SLA violations, near-duplicate links, escalations and feedback.
+7 SLA policies and 43 incidents in every state, with SLA violations, near-duplicate links, escalations and feedback.
 Times are relative to "now", so re-seed shortly before a demo (open P1s keep escalating as real time passes).
 
 **All demo accounts use the password `Demo@1234`.**

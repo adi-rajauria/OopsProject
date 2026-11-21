@@ -12,6 +12,7 @@ import type {
   Notification,
   Overview,
   Recommendation,
+  RecurringProblem,
   Ref,
   ResolutionEstimate,
   RiskAssessment,
@@ -94,6 +95,7 @@ export const intelligenceApi = {
     http.post<SelfHelpTip[]>("/intelligence/self-help", { title, description }),
   slaRisk: (minimum: RiskLevel = "MEDIUM") => http.get<RiskAssessment[]>("/intelligence/sla-risk", { minimum }),
   correlation: () => http.get<CorrelationReport>("/intelligence/correlation"),
+  recurring: () => http.get<RecurringProblem[]>("/intelligence/recurring"),
 };
 
 export const lookupsApi = {
