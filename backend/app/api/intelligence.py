@@ -8,6 +8,7 @@ from app.domain.enums import Permission
 from app.domain.users import User
 from app.intelligence.category_classifier import CategorySuggestion
 from app.intelligence.correlation import CorrelationReport
+from app.intelligence.recurring import RecurringProblem
 from app.intelligence.sla_risk import RiskLevel, SLARiskAssessment
 
 router = APIRouter(prefix="/api/intelligence", tags=["intelligence"])
@@ -59,3 +60,9 @@ def sla_risk(user: Staff, container: Container, minimum: RiskLevel = RiskLevel.M
 @router.get("/correlation", response_model=CorrelationReport)
 def correlation(user: Staff, container: Container) -> CorrelationReport:
     return container.intelligence.correlation(user)
+
+
+@router.get("/recurring", response_model=list[RecurringProblem])
+def recurring(user: Staff, container: Container) -> list[RecurringProblem]:
+    """Problems that keep coming back on a service (last 30 days) - candidates for root-cause analysis."""
+    return container.intelligence.recurring_problems(user)

@@ -16,6 +16,7 @@ from app.intelligence.correlation import Health, IncidentCorrelator
 from app.intelligence.duplicate_detector import DuplicateDetector
 from app.intelligence.escalation import EscalationPolicy
 from app.intelligence.recommender import TechnicianRecommender
+from app.intelligence.recurring import RecurringProblemDetector
 from app.intelligence.resolution_suggester import ResolutionSuggester
 from app.intelligence.resolution_time import ResolutionTimeEstimator
 from app.intelligence.sla_risk import RiskLevel, SLARiskAnalyzer
@@ -226,6 +227,26 @@ def test_correlation_finds_hotspot_and_upstream_cause():
     kinds = {(f.kind, f.root_service) for f in report.findings}
     assert kinds == {("HOTSPOT", "VPN"), ("UPSTREAM_CAUSE", "Network")}
     assert report.finding_for(5) is None and report.edges == [(2, 1)]
+
+
+# --- Recurring problems ------------------------------------------------------------------------
+
+
+def test_recurring_problem_groups_similar_incidents_across_days_but_not_bursts():
+    services = [ITService(id=1, code="VPN", name="VPN", business_criticality=3), ITService(id=2, code="PAY", name="Payments", business_criticality=4)]
+    vpn = [
+        incident(1, "VPN disconnects every 10 minutes", "Remote staff lose the VPN connection", age_min=12 * 1440, status=IncidentStatus.CLOSED, summary="Replaced the uplink"),
+        incident(2, "VPN keeps disconnecting remote staff", "Remote staff are disconnected from the VPN again", age_min=6 * 1440, status=IncidentStatus.CLOSED, summary="Restarted the VPN concentrator"),
+        incident(3, "VPN tunnel drops for remote staff", "The VPN tunnel keeps dropping for remote workers", age_min=240),
+        incident(4, "Printer jams on floor 2", "Paper jam on every page", age_min=3 * 1440),  # same service, unrelated
+        incident(5, "VPN drops again", "VPN disconnects for remote staff", age_min=45 * 1440),  # older than 30 days
+    ]
+    burst = [incident(10 + n, "Payment application unavailable", "Users cannot complete transactions", service=2, age_min=30 + n) for n in range(4)]
+    [problem] = RecurringProblemDetector(SIM).detect(services, vpn + burst, START)
+    assert problem.service == "VPN" and problem.incident_ids == (3, 2, 1)  # newest first; the burst is not recurring
+    assert problem.occurrences == 3 and problem.open_count == 1
+    assert problem.latest_fix == "Restarted the VPN concentrator" and "came back" in problem.reason
+    assert RecurringProblemDetector(SIM).detect(services, vpn[:2], START) == []  # 2 < minimum of 3
 
 
 # --- Suggested resolution (bonus) -------------------------------------------------------------

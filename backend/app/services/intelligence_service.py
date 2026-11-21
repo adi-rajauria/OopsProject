@@ -8,6 +8,7 @@ from app.intelligence.category_classifier import CategorySuggester, CategorySugg
 from app.intelligence.correlation import CorrelationReport, IncidentCorrelator
 from app.intelligence.duplicate_detector import DuplicateCheck, DuplicateDetector
 from app.intelligence.recommender import Recommendation, TechnicianRecommender
+from app.intelligence.recurring import RecurringProblem, RecurringProblemDetector
 from app.intelligence.resolution_suggester import ResolutionSuggester, SuggestedResolution
 from app.intelligence.resolution_time import ResolutionEstimate, ResolutionTimeEstimator
 from app.intelligence.sla_risk import RiskLevel, SLARiskAnalyzer, SLARiskAssessment
@@ -38,6 +39,7 @@ class IntelligenceService:
         self._recommender = TechnicianRecommender()
         self._risk = SLARiskAnalyzer()
         self._correlator = IncidentCorrelator()
+        self._recurring = RecurringProblemDetector(similarity)
 
     # --- used while reporting (any user who can report) ------------------------------
     def suggest_category(self, title: str, description: str) -> list[CategorySuggestion]:
@@ -92,3 +94,7 @@ class IntelligenceService:
     def correlation(self, viewer: User) -> CorrelationReport:
         _require_staff(viewer)
         return self._correlator.analyse(self._uow.services.list(), self._uow.incidents.list_all(), self._clock.now())
+
+    def recurring_problems(self, viewer: User) -> list[RecurringProblem]:
+        _require_staff(viewer)
+        return self._recurring.detect(self._uow.services.list(), self._uow.incidents.list_all(), self._clock.now())

@@ -75,6 +75,7 @@ def test_employee_to_technician_flow_over_http(api):
         ("riya", "/api/admin/users", 403),
         ("riya", "/api/reports/overview", 403),
         ("riya", "/api/intelligence/sla-risk", 403),
+        ("riya", "/api/intelligence/recurring", 403),
         ("riya", "/api/technicians/me/queue", 403),
         ("kabir", "/api/admin/services", 403),
         ("kabir", "/api/reports/overview", 403),
@@ -140,6 +141,8 @@ def test_dashboards_intelligence_and_admin_over_http(api):
     assert len(client.get("/api/reports/trends", headers=admin, params={"days": 7}).json()) == 7
     correlation = client.get("/api/intelligence/correlation", headers=admin).json()
     assert any(f["kind"] == "HOTSPOT" and f["root_service"] == "Payments Platform" for f in correlation["findings"])
+    recurring = client.get("/api/intelligence/recurring", headers=admin).json()
+    assert [(p["service"], p["occurrences"]) for p in recurring] == [("Corporate VPN", 3)]  # seeded VPN drop-outs
     assert client.get("/api/intelligence/sla-risk", headers=admin).json()
     strategies = client.put(
         "/api/admin/settings/assignment-strategy", headers=admin, json={"key": "ROUND_ROBIN"}
