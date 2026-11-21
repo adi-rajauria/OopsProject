@@ -157,7 +157,7 @@ export function ReportIncidentPage() {
             <div className="flex items-end justify-between gap-2">
               <label className="label" htmlFor="desc">What happened?</label>
               {voice.supported && (
-                <button type="button" onClick={voice.listening ? voice.stop : voice.start} aria-pressed={voice.listening}
+                <button type="button" onClick={() => (voice.listening ? voice.stop() : void voice.start())} aria-pressed={voice.listening}
                         className={`mb-1.5 inline-flex items-center gap-1.5 rounded border px-2 py-1 text-[12.5px] ${
                           voice.listening ? "border-critical-solid bg-critical-soft text-critical" : "border-line-strong text-muted hover:text-fg"}`}>
                   <MicIcon size={14} />
@@ -171,7 +171,19 @@ export function ReportIncidentPage() {
             {voice.listening && (
               <p className="hint" aria-live="polite">Listening… {voice.interim && <em className="text-fg">{voice.interim}</em>}</p>
             )}
-            {voice.error && <p className="hint text-warning">{voice.error}</p>}
+            {voice.error && (
+              <p className="hint text-warning">
+                {voice.error}
+                {voice.offlineAvailable && (
+                  <>
+                    {" "}This browser can recognise speech on your computer instead.{" "}
+                    <button type="button" className="link" disabled={voice.installing} onClick={() => void voice.installOffline()}>
+                      {voice.installing ? "Downloading offline speech…" : "Download offline speech (one time)"}
+                    </button>
+                  </>
+                )}
+              </p>
+            )}
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
