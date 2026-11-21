@@ -24,4 +24,8 @@
   deactivated accounts.
 - **Simulated e-mail/SMS**: no real credentials are needed; providers are adapters, so real ones (with secrets in env)
   can replace them.
+- **Voice reporting uses the browser's speech service**: in Chrome and Edge, dictated audio is sent to the browser
+  vendor's cloud speech recognition (Google / Microsoft), not to our server. It only runs after the employee clicks
+  "Speak instead" and the browser asks for microphone permission; typing remains the default. Production alternative
+  for sensitive environments: an on-premise speech-to-text service behind the same hook.
 - **Self-registration** always creates an Employee; only administrators can create technicians or administrators.

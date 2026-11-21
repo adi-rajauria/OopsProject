@@ -24,6 +24,9 @@ export const MonitorIcon = (p: IconProps) => (
 export const BellIcon = (p: IconProps) => (
   <Icon {...p}><path d="M4 11.5V7a4 4 0 1 1 8 0v4.5l1 1H3l1-1ZM6.5 14a1.5 1.5 0 0 0 3 0" /></Icon>
 );
+export const MicIcon = (p: IconProps) => (
+  <Icon {...p}><rect x="5.5" y="1.5" width="5" height="8" rx="2.5" /><path d="M3 7.5a5 5 0 0 0 10 0M8 12.5v2" /></Icon>
+);
 export const MenuIcon = (p: IconProps) => (
   <Icon {...p}><path d="M2.5 4h11M2.5 8h11M2.5 12h11" /></Icon>
 );
