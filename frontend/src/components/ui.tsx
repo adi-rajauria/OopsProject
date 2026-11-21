@@ -65,7 +65,7 @@ export function Card({ title, actions, children, className = "", flush = false }
   flush?: boolean;
 }) {
   return (
-    <section className={`panel ${className}`}>
+    <section className={`panel min-w-0 ${className}`}>
       {(title || actions) && (
         <header className="flex min-h-10 items-center justify-between gap-3 border-b border-line px-4 py-2">
           {typeof title === "string" ? <h2 className="text-[13.5px]">{title}</h2> : title}
