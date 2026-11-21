@@ -1,6 +1,6 @@
 # Test cases
 
-Run: `cd backend && .venv/bin/pytest` (104 test functions, 164 cases with parametrisation; about 20 s, mostly the seeded API tests).
+Run: `cd backend && .venv/bin/pytest` (106 test functions, 170 cases with parametrisation; about 20 s, mostly the seeded API tests).
 Types: **N** normal operation · **B** boundary · **I** invalid input · **E** exception · **A** authorization · **R** business rule · **S** state transition.
 
 Fixture world (`tests/conftest.py`): services PAY (criticality 4), MAIL (3), WIKI (1); categories APPLICATION, NETWORK, DATABASE, HARDWARE;
@@ -109,6 +109,8 @@ Clock fixed at 2026-11-16 10:00 UTC and advanced explicitly.
 | TC-76 | Escalation applicability | unacked P1, P2, acknowledged P1; P2 enabled | 4 named steps; P2 and acked none; P2 escalates when enabled | R |
 | TC-77 | Correlation | 3 recent VPN incidents, 1 on Network (VPN depends on it), 1 old Wiki | VPN HOTSPOT, Network upstream cause, edges, Wiki DEGRADED | N |
 | TC-78 | Suggested resolutions + self-service on typed text | VPN incident vs resolved VPN, resolved printer, open VPN; then text "VPN keeps disconnecting" and "Coffee machine is empty" | only the resolved VPN fix returned (both times); nothing for the coffee text | N |
+| TC-104 | Impact / urgency hints per level (5 cases) | "All customers cannot pay"; "whole department is blocked before the deadline"; "a few colleagues ... intermittently"; "Only me: a cosmetic issue"; "Not sure what is happening" | (4,4), (3,3), (2,2), (1,1), no hint and no reason | N/B |
+| TC-105 | Hint explains itself | "Payment application unavailable. Users are unable to complete transactions" | urgency 4 with reason `mentions "unable to complete transactions"`; no impact hint ("users" alone says nothing about how many) | N |
 | TC-103 | Recommendation uses reporter ratings | two identical NETWORK technicians rated 2.0 (x3) and 4.8 (x5); then one with a single 5-star rating | 4.8-rated first, reason "rated 4.8/5 by 5 reporter(s)", rating points 9.5 vs 2.5; single rating gives equal scores and "not enough ratings yet" | N/B |
 | TC-102 | Recurring problems: grouped across days, bursts and unrelated ignored | 3 VPN drop-outs over 12 days (2 fixed), unrelated printer on same service, VPN drop 45 days ago, 4 identical payment reports within minutes; then only 2 VPN | one problem: VPN, incidents newest first (3, 2, 1), 1 open, latest fix shown, reason "came back"; then none (minimum 3) | N/B/R |
 | TC-99 | Predicted resolution time: median, category basis, pauses excluded | open P2 Network incident; resolved P2 Network in 60, 90 (+600 paused), 600 min; P2 other category in 5 min | median 90 min from 3 samples, basis "P2 Network incidents", reason says 1.5 h, expected = created + 90 min | N/B |
@@ -143,7 +145,7 @@ Clock fixed at 2026-11-16 10:00 UTC and advanced explicitly.
 | TC-96 | Dashboards, intelligence, admin over HTTP | reports, correlation, recurring problems, risk, strategy switch, delete default policy, check-now, create technician | data present, PAY hotspot, exactly one recurring problem (Corporate VPN x3), ROUND_ROBIN active, 422, 200, 201 with skills | N |
 | TC-97 | Event stream authentication | bad token | 401 | A |
 | TC-98 | Background monitor pass | at seed time; 30 min later | no escalations; then new violations and escalations | R |
-| TC-101 | Self-service fixes and resolution estimate over HTTP | employee types a VPN problem; empty title; estimate for own incident, for someone else's, admin over all incidents | tips with a fix and no incident id; 422; 200; 403; at least one estimate from >= 3 samples with a "median of" reason | N/I/A |
+| TC-101 | Self-service fixes, severity hint and resolution estimate over HTTP | employee types a VPN problem; empty title; "All users cannot pay"; estimate for own incident, for someone else's, admin over all incidents | tips with a fix and no incident id; 422; impact 4 + urgency 4 with reason `mentions "cannot pay"`; 200; 403; at least one estimate from >= 3 samples with a "median of" reason | N/I/A |
 
 ## Spec exception coverage
 

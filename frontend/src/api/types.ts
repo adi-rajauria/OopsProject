@@ -325,6 +325,13 @@ export interface SuggestedResolution {
   similarity: number;
 }
 
+export interface SeverityHint {
+  impact: number | null;
+  impact_reason: string | null;
+  urgency: number | null;
+  urgency_reason: string | null;
+}
+
 export interface RecurringProblem {
   service_id: number;
   service: string;

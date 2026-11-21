@@ -14,6 +14,7 @@ Code lives in `backend/app/intelligence/` (pure Python, plus scikit-learn behind
 | 5 | Category suggestion | `intelligence/category_classifier.py` | report form, auto-fill when no category is chosen |
 | + | Service correlation (innovation) | `intelligence/correlation.py` | dependency graph view |
 | + | Suggested resolutions (spec G) | `intelligence/resolution_suggester.py` | incident page (staff); "Try this first" on the report form (self-service) |
+| + | Impact / urgency hints | `intelligence/severity_hints.py` | report form, under the impact and urgency scales |
 | + | Recurring problem detection | `intelligence/recurring.py` | Service health page |
 | + | Predicted resolution time | `intelligence/resolution_time.py` | incident page, Details card (everyone who can view it) |
 
@@ -146,6 +147,26 @@ Over incidents still open:
 - **Upstream cause:** a service with recent incidents that depends on a service which *also* has recent incidents →
   the upstream service is flagged as the likely common cause (e.g. Payments → API Gateway).
 - Node health: HOTSPOT / DEGRADED (any open incident) / HEALTHY, plus edges for the graph view.
+
+## Impact / urgency hints
+
+Priority depends on the impact and urgency the employee picks, and people rate the same outage differently. While they
+type, a rule table suggests a level for each scale from phrases in the title and description:
+
+| Level | Impact phrases (examples) | Urgency phrases (examples) |
+|---|---|---|
+| 4 | all users / customers / regions, everyone, whole company | cannot pay, outage, unavailable, is down, breach, transactions fail |
+| 3 | whole department / floor / building, multiple floors, nobody can | blocked, cannot work, urgent, deadline, stopped working, keeps dropping |
+| 2 | colleagues, several people, a few users, my team | slow, intermittent, sometimes, delayed |
+| 1 | only me, just me, my laptop / keyboard / account | workaround, no rush, cosmetic, minor |
+
+The **highest** matching level wins (so "all customers ... slow" is still impact 4), and the matched phrase is the reason:
+"Your description suggests **Organisation** (mentions "all customers") · Use it". The hint is shown only when it differs
+from the current choice, and the employee's choice is what gets submitted. **Why rules and not ML:** severity words are
+few and well known, rules are predictable and explainable in one sentence, and there is no labelled training data.
+**Measured on the seed:** a hint appears for 9 of 43 reports (impact) and 12 of 43 (urgency), and every hint is within
+one level of what the reporter chose (3 / 8 exact). "nobody can" was moved from 4 to 3 after it over-rated a team file
+share.
 
 ## Recurring problem detection
 

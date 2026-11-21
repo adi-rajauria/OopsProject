@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router";
 import { ApiError } from "../../api/client";
 import { incidentsApi, intelligenceApi, lookupsApi } from "../../api/endpoints";
-import type { CategorySuggestion, IncidentLink, SelfHelpTip } from "../../api/types";
+import type { CategorySuggestion, IncidentLink, SelfHelpTip, SeverityHint } from "../../api/types";
 import { StatusBadge } from "../../components/badges";
 import { errorMessage, useToast } from "../../components/Toasts";
 import { Card, ErrorMessage, PageHeader, Spinner } from "../../components/ui";
@@ -41,6 +41,24 @@ function ScaleChooser({ name, value, onChange, options }: {
   );
 }
 
+/** "Your description suggests …" under a scale, only when it differs from the current choice. */
+function ScaleHint({ level, reason, current, options, onUse }: {
+  level: number | null;
+  reason: string | null;
+  current: number;
+  options: { value: number; label: string }[];
+  onUse: (v: number) => void;
+}) {
+  if (level === null || level === current) return null;
+  const label = options.find((o) => o.value === level)?.label ?? level;
+  return (
+    <p className="hint">
+      Your description suggests <strong>{label}</strong> ({reason}){" "}
+      <button type="button" className="link" onClick={() => onUse(level)}>Use it</button>
+    </p>
+  );
+}
+
 export function ReportIncidentPage() {
   const toast = useToast();
   const navigate = useNavigate();
@@ -55,6 +73,7 @@ export function ReportIncidentPage() {
   const [suggestions, setSuggestions] = useState<CategorySuggestion[]>([]);
   const [similar, setSimilar] = useState<IncidentLink[]>([]);
   const [tips, setTips] = useState<SelfHelpTip[]>([]);
+  const [severity, setSeverity] = useState<SeverityHint | null>(null);
   const [blocking, setBlocking] = useState<IncidentLink[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
@@ -68,9 +87,11 @@ export function ReportIncidentPage() {
       setSuggestions([]);
       setSimilar([]);
       setTips([]);
+      setSeverity(null);
       return;
     }
     intelligenceApi.suggestCategory(text.title, text.description).then(setSuggestions).catch(() => setSuggestions([]));
+    intelligenceApi.suggestSeverity(text.title, text.description).then(setSeverity).catch(() => setSeverity(null));
     intelligenceApi.selfHelp(text.title, text.description).then(setTips).catch(() => setTips([]));
     if (text.serviceId !== "") {
       intelligenceApi.checkDuplicates(text.title, text.description, text.serviceId).then(setSimilar).catch(() => setSimilar([]));
@@ -155,10 +176,14 @@ export function ReportIncidentPage() {
           <div>
             <span className="label">Who is affected?</span>
             <ScaleChooser name="Impact" value={impact} onChange={setImpact} options={IMPACT_OPTIONS} />
+            <ScaleHint level={severity?.impact ?? null} reason={severity?.impact_reason ?? null} current={impact}
+                       options={IMPACT_OPTIONS} onUse={setImpact} />
           </div>
           <div>
             <span className="label">How urgent is it?</span>
             <ScaleChooser name="Urgency" value={urgency} onChange={setUrgency} options={URGENCY_OPTIONS} />
+            <ScaleHint level={severity?.urgency ?? null} reason={severity?.urgency_reason ?? null} current={urgency}
+                       options={URGENCY_OPTIONS} onUse={setUrgency} />
           </div>
           <div className="max-w-xs">
             <label className="label" htmlFor="affected">Roughly how many people are affected?</label>

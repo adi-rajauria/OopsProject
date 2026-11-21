@@ -19,6 +19,7 @@ import type {
   RiskLevel,
   SearchPage,
   SelfHelpTip,
+  SeverityHint,
   Service,
   ServiceStats,
   SLACheckSummary,
@@ -91,6 +92,8 @@ export const intelligenceApi = {
     http.post<CategorySuggestion[]>("/intelligence/suggest-category", { title, description }),
   checkDuplicates: (title: string, description: string, service_id: number) =>
     http.post<IncidentLink[]>("/intelligence/check-duplicates", { title, description, service_id }),
+  suggestSeverity: (title: string, description: string) =>
+    http.post<SeverityHint>("/intelligence/suggest-severity", { title, description }),
   selfHelp: (title: string, description: string) =>
     http.post<SelfHelpTip[]>("/intelligence/self-help", { title, description }),
   slaRisk: (minimum: RiskLevel = "MEDIUM") => http.get<RiskAssessment[]>("/intelligence/sla-risk", { minimum }),
