@@ -217,10 +217,10 @@
     @apply w-full text-left text-[13px];
   }
   .data-table th {
-    @apply border-b border-line px-3 py-2 text-xs font-medium whitespace-nowrap text-muted;
+    @apply border-b border-line px-2.5 py-2 text-xs font-medium whitespace-nowrap text-muted first:pl-4 last:pr-4;
   }
   .data-table td {
-    @apply border-b border-line px-3 py-2.5 align-top;
+    @apply border-b border-line px-2.5 py-2.5 align-top first:pl-4 last:pr-4;
   }
   .data-table tbody tr:last-child td {
     @apply border-b-0;

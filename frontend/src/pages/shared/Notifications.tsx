@@ -23,26 +23,26 @@ export function NotificationsPage() {
     <>
       <PageHeader title="Notifications" subtitle="In-app messages. E-mail and SMS copies are sent (simulated) for important events."
                   actions={<button className="btn-secondary" onClick={markAll}>Mark all as read</button>} />
-      <Card title={
-        <label className="flex items-center gap-2 text-sm text-slate-600">
+      <Card flush title={
+        <label className="flex items-center gap-2 text-[13px] text-muted">
           <input type="checkbox" checked={unreadOnly} onChange={(e) => setUnreadOnly(e.target.checked)} /> Unread only
         </label>
       }>
-        {inbox.error && <ErrorMessage error={inbox.error} onRetry={inbox.reload} />}
-        {inbox.loading && !inbox.data && <Spinner />}
+        {inbox.error && <div className="p-4"><ErrorMessage error={inbox.error} onRetry={inbox.reload} /></div>}
+        {inbox.loading && !inbox.data && <div className="px-4"><Spinner /></div>}
         {inbox.data?.length === 0 && <EmptyState title="You're all caught up" />}
-        <ul className="divide-y divide-slate-100">
+        <ul className="divide-y divide-line">
           {inbox.data?.map((n) => (
-            <li key={n.id} className={`flex items-start gap-3 py-3 ${n.is_read ? "" : "-mx-2 rounded-lg bg-[var(--accent-soft)]/40 px-2"}`}>
-              <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${n.is_read ? "bg-transparent" : "bg-[var(--accent)]"}`} />
+            <li key={n.id} className={`flex items-start gap-3 px-4 py-3 ${n.is_read ? "" : "shadow-[inset_3px_0_0_var(--c-brand)]"}`}>
+              <span aria-label={n.is_read ? undefined : "unread"} className={`mt-2 h-1.5 w-1.5 shrink-0 rounded-full ${n.is_read ? "bg-transparent" : "bg-brand"}`} />
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <span className={n.is_read ? "text-slate-700" : "font-semibold text-slate-900"}>{n.title}</span>
-                  <time className="text-xs text-slate-400" title={formatDateTime(n.created_at)}>{relativeTime(n.created_at)}</time>
+                  <span className={n.is_read ? "text-fg" : "font-semibold text-fg"}>{n.title}</span>
+                  <time className="text-[12px] text-faint tabular-nums" title={formatDateTime(n.created_at)}>{relativeTime(n.created_at)}</time>
                 </div>
-                <p className="text-sm text-slate-600">{n.body}</p>
+                <p className="text-sm text-muted">{n.body}</p>
                 <div className="mt-1 flex gap-3 text-xs">
-                  <span className="text-slate-400">{titleCase(n.type)}</span>
+                  <span className="font-mono text-[11.5px] text-faint">{titleCase(n.type)}</span>
                   {n.incident_id && <Link className="link" to={`/incidents/${n.incident_id}`}>Open {n.incident_number}</Link>}
                   {!n.is_read && (
                     <button className="link" onClick={async () => { await notificationsApi.markRead(n.id); inbox.reload(); }}>
