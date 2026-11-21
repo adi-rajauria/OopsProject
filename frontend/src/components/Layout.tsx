@@ -221,14 +221,16 @@ function EmployeeShell({ user, onLogout }: { user: User; onLogout: () => void })
           <div className="flex h-14 items-center">
             <Wordmark role={user.role} />
           </div>
-          <nav aria-label="Main" className="order-last -mx-4 flex w-[calc(100%+2rem)] gap-5 overflow-x-auto border-t border-line px-4 sm:-mx-6 sm:w-[calc(100%+3rem)] sm:px-6 md:order-none md:mx-0 md:w-auto md:border-0 md:px-0">
+          {/* Phones: one row that scrolls sideways (never vertically). Desktop: no scrolling at all, so the 1px
+              underline overlap below can't produce a stray vertical scrollbar. */}
+          <nav aria-label="Main" className="order-last -mx-4 flex w-[calc(100%+2rem)] gap-5 overflow-x-auto overflow-y-hidden border-t border-line px-4 sm:-mx-6 sm:w-[calc(100%+3rem)] sm:px-6 md:order-none md:mx-0 md:w-auto md:overflow-visible md:border-0 md:px-0">
             {items.map(({ to, label, end }) => (
               <NavLink
                 key={to}
                 to={to}
                 end={end}
                 className={({ isActive }) =>
-                  `-mb-px flex h-11 items-center border-b-2 text-[13.5px] whitespace-nowrap transition-colors md:h-14 ${
+                  `flex h-11 items-center border-b-2 text-[13.5px] whitespace-nowrap transition-colors md:-mb-px md:h-14 ${
                     isActive ? "border-brand font-medium text-fg" : "border-transparent text-muted hover:text-fg"
                   }`
                 }
