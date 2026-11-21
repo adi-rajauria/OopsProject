@@ -51,7 +51,7 @@ cd backend
 python3.14 -m venv .venv && source .venv/bin/activate      # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 alembic upgrade head
-uvicorn app.main:create_app --factory --reload
+uvicorn app.main:create_app --factory --reload --timeout-graceful-shutdown 3
 ```
 
 ## 5. Web UI (frontend)
