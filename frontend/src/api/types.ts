@@ -325,6 +325,20 @@ export interface SuggestedResolution {
   similarity: number;
 }
 
+export interface SelfHelpTip {
+  title: string;
+  resolution: string;
+  similarity: number;
+}
+
+export interface ResolutionEstimate {
+  median_minutes: number;
+  sample_size: number;
+  basis: string;
+  expected_by: string | null;
+  reason: string;
+}
+
 export interface RiskAssessment {
   incident_id: number;
   number: string;

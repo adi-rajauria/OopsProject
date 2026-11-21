@@ -163,6 +163,24 @@ def test_dashboards_intelligence_and_admin_over_http(api):
     assert created.status_code == 201 and created.json()["technician_profile"]["skills"] == ["NETWORK"]
 
 
+def test_self_help_and_resolution_estimate_over_http(api):
+    client, login = api
+    riya, admin = login("riya"), login("admin")
+    text = {"title": "VPN keeps disconnecting", "description": "Remote staff lose the VPN connection"}
+    tips = client.post("/api/intelligence/self-help", headers=riya, json=text).json()
+    assert tips and tips[0]["resolution"] and "incident_id" not in tips[0]  # employees never see others' ids
+    assert client.post("/api/intelligence/self-help", headers=riya, json={"title": ""}).status_code == 422
+
+    own = client.get("/api/incidents", headers=riya, params={"page_size": 100}).json()["items"]
+    mine = own[0]["id"]
+    assert client.get(f"/api/incidents/{mine}/resolution-estimate", headers=riya).status_code == 200
+    others = client.get("/api/incidents", headers=admin, params={"page_size": 100}).json()["items"]
+    foreign = next(i["id"] for i in others if i["reporter"]["name"] != "Riya Kapoor")
+    assert client.get(f"/api/incidents/{foreign}/resolution-estimate", headers=riya).status_code == 403
+    estimates = [client.get(f"/api/incidents/{i['id']}/resolution-estimate", headers=admin).json() for i in others]
+    assert any(e and e["sample_size"] >= 3 and "median of" in e["reason"] for e in estimates)
+
+
 def test_event_stream_rejects_bad_tokens(api):
     client, _ = api
     assert client.get("/api/stream/events", params={"token": "not-a-real-token"}).status_code == 401

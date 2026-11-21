@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router";
 import { ApiError } from "../../api/client";
 import { incidentsApi, intelligenceApi, lookupsApi } from "../../api/endpoints";
-import type { CategorySuggestion, IncidentLink } from "../../api/types";
+import type { CategorySuggestion, IncidentLink, SelfHelpTip } from "../../api/types";
 import { StatusBadge } from "../../components/badges";
 import { errorMessage, useToast } from "../../components/Toasts";
 import { Card, ErrorMessage, PageHeader, Spinner } from "../../components/ui";
@@ -54,6 +54,7 @@ export function ReportIncidentPage() {
   const [affected, setAffected] = useState(1);
   const [suggestions, setSuggestions] = useState<CategorySuggestion[]>([]);
   const [similar, setSimilar] = useState<IncidentLink[]>([]);
+  const [tips, setTips] = useState<SelfHelpTip[]>([]);
   const [blocking, setBlocking] = useState<IncidentLink[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
@@ -66,9 +67,11 @@ export function ReportIncidentPage() {
     if (text.title.trim().length < 4) {
       setSuggestions([]);
       setSimilar([]);
+      setTips([]);
       return;
     }
     intelligenceApi.suggestCategory(text.title, text.description).then(setSuggestions).catch(() => setSuggestions([]));
+    intelligenceApi.selfHelp(text.title, text.description).then(setTips).catch(() => setTips([]));
     if (text.serviceId !== "") {
       intelligenceApi.checkDuplicates(text.title, text.description, text.serviceId).then(setSimilar).catch(() => setSimilar([]));
     } else {
@@ -190,6 +193,22 @@ export function ReportIncidentPage() {
         </form>
 
         <aside className="space-y-4">
+          {tips.length > 0 && (
+            <Card title="Try this first">
+              <p className="mb-3 text-[12.5px] text-muted">These fixes solved similar problems before. If one works, you don't need to submit.</p>
+              <ul className="space-y-3">
+                {tips.map((t, index) => (
+                  <li key={index} className="text-[13px]">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span className="text-muted">{t.title}</span>
+                      <span className="shrink-0 font-mono text-[11.5px] text-muted">{Math.round(t.similarity * 100)}%</span>
+                    </div>
+                    <p className="mt-1 border-l-2 border-ok-solid pl-3 text-fg">{t.resolution}</p>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          )}
           <Card title="Is it already reported?">
             {serviceId === "" || title.trim().length < 4 ? (
               <p className="text-[13px] text-muted">Choose a service and type a summary to check for similar open incidents.</p>

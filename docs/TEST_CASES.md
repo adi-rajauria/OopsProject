@@ -1,6 +1,6 @@
 # Test cases
 
-Run: `cd backend && .venv/bin/pytest` (99 test functions, 158 cases with parametrisation; about 20 s, mostly the seeded API tests).
+Run: `cd backend && .venv/bin/pytest` (102 test functions, 161 cases with parametrisation; about 20 s, mostly the seeded API tests).
 Types: **N** normal operation · **B** boundary · **I** invalid input · **E** exception · **A** authorization · **R** business rule · **S** state transition.
 
 Fixture world (`tests/conftest.py`): services PAY (criticality 4), MAIL (3), WIKI (1); categories APPLICATION, NETWORK, DATABASE, HARDWARE;
@@ -108,7 +108,9 @@ Clock fixed at 2026-11-16 10:00 UTC and advanced explicitly.
 | TC-75 | Escalation level boundaries (7 cases) | P1, 0 / 0.02 / 4.9 / 5 / 10 / 15 / 99 min after due | 0, 1, 1, 2, 3, 4, 4 | B |
 | TC-76 | Escalation applicability | unacked P1, P2, acknowledged P1; P2 enabled | 4 named steps; P2 and acked none; P2 escalates when enabled | R |
 | TC-77 | Correlation | 3 recent VPN incidents, 1 on Network (VPN depends on it), 1 old Wiki | VPN HOTSPOT, Network upstream cause, edges, Wiki DEGRADED | N |
-| TC-78 | Suggested resolutions | VPN incident vs resolved VPN, resolved printer, open VPN | only the resolved VPN fix returned | N |
+| TC-78 | Suggested resolutions + self-service on typed text | VPN incident vs resolved VPN, resolved printer, open VPN; then text "VPN keeps disconnecting" and "Coffee machine is empty" | only the resolved VPN fix returned (both times); nothing for the coffee text | N |
+| TC-99 | Predicted resolution time: median, category basis, pauses excluded | open P2 Network incident; resolved P2 Network in 60, 90 (+600 paused), 600 min; P2 other category in 5 min | median 90 min from 3 samples, basis "P2 Network incidents", reason says 1.5 h, expected = created + 90 min | N/B |
+| TC-100 | Predicted resolution time fallback | 1 same-category + 2 other-category P2 samples; then only 2 P2 samples | falls back to "P2 incidents" (median 40); then no estimate (minimum 3 samples) | B/R |
 
 ## Phase 2: services (`tests/services/test_phase2_services.py`)
 
@@ -139,6 +141,7 @@ Clock fixed at 2026-11-16 10:00 UTC and advanced explicitly.
 | TC-96 | Dashboards, intelligence, admin over HTTP | reports, correlation, risk, strategy switch, delete default policy, check-now, create technician | data present, PAY hotspot, ROUND_ROBIN active, 422, 200, 201 with skills | N |
 | TC-97 | Event stream authentication | bad token | 401 | A |
 | TC-98 | Background monitor pass | at seed time; 30 min later | no escalations; then new violations and escalations | R |
+| TC-101 | Self-service fixes and resolution estimate over HTTP | employee types a VPN problem; empty title; estimate for own incident, for someone else's, admin over all incidents | tips with a fix and no incident id; 422; 200; 403; at least one estimate from >= 3 samples with a "median of" reason | N/I/A |
 
 ## Spec exception coverage
 

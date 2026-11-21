@@ -12,7 +12,7 @@ import { useToast } from "../../components/Toasts";
 import { Card, ErrorMessage, Notice, Spinner } from "../../components/ui";
 import { useLiveRefresh } from "../../hooks/LiveEvents";
 import { useAsync } from "../../hooks/useAsync";
-import { formatDateTime, IMPACT_OPTIONS, relativeTime, URGENCY_OPTIONS } from "../../lib/format";
+import { formatDateTime, formatMinutes, IMPACT_OPTIONS, relativeTime, URGENCY_OPTIONS } from "../../lib/format";
 
 type Refresh = (incident?: IncidentDetail) => void;
 
@@ -391,6 +391,27 @@ function SuggestedFixes({ incident, onUse }: { incident: IncidentDetail; onUse: 
   );
 }
 
+/** Typical time to resolve, from the median of comparable resolved incidents (shown to everyone who can view it). */
+function ResolutionEstimateLine({ incident }: { incident: IncidentDetail }) {
+  const estimate = useAsync(() => incidentsApi.resolutionEstimate(incident.id), [incident.id, incident.status, incident.priority]);
+  const e = estimate.data;
+  if (!e) return null;
+  // While waiting on the reporter the clock is paused, so an expected time would keep moving.
+  const working = e.expected_by !== null && !["RESOLVED", "VERIFIED", "CLOSED", "PENDING_INFO"].includes(incident.status);
+  const overdue = working && new Date(e.expected_by!).getTime() < Date.now();
+  return (
+    <div className="mt-4 border-t border-line pt-3">
+      <div className="text-[12px] text-muted">Typical time to resolve</div>
+      <div className="mt-0.5 text-[13.5px] text-fg">
+        ~{formatMinutes(e.median_minutes)}
+        {working && !overdue && <span className="text-muted"> · expected around {formatDateTime(e.expected_by)}</span>}
+        {overdue && <span className="text-warning"> · taking longer than usual</span>}
+      </div>
+      <p className="mt-0.5 text-xs text-faint">{e.reason}</p>
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------- page
 
 function Detail({ label, children }: { label: string; children: ReactNode }) {
@@ -496,6 +517,7 @@ export function IncidentDetailPage() {
               <Detail label="Affected users">{i.affected_users}</Detail>
               <Detail label="Last update">{relativeTime(i.updated_at)}</Detail>
             </dl>
+            <ResolutionEstimateLine incident={i} />
           </Card>
           {(i.links.length > 0 || i.parent_incident) && (
             <Card title="Related incidents">

@@ -17,6 +17,7 @@ from app.intelligence.duplicate_detector import DuplicateDetector
 from app.intelligence.escalation import EscalationPolicy
 from app.intelligence.recommender import TechnicianRecommender
 from app.intelligence.resolution_suggester import ResolutionSuggester
+from app.intelligence.resolution_time import ResolutionTimeEstimator
 from app.intelligence.sla_risk import RiskLevel, SLARiskAnalyzer
 from app.intelligence.text_similarity import TfidfTextSimilarity, incident_text
 from tests.conftest import START
@@ -38,6 +39,7 @@ def incident(
     resolution=120,
     assignee: int | None = 7,
     summary: str | None = None,
+    category: int | None = None,
 ) -> Incident:
     created = START - timedelta(minutes=age_min)
     sla = IncidentSLA.from_policy(
@@ -57,6 +59,7 @@ def incident(
         sla=sla,
         assigned_technician_id=assignee,
         resolution_summary=summary,
+        category_id=category,
     )
 
 
@@ -244,3 +247,38 @@ def test_resolution_suggestions_come_from_similar_resolved_incidents():
     suggestions = ResolutionSuggester(SIM).suggest(current, history)
     assert [s.incident_id for s in suggestions] == [1]
     assert suggestions[0].resolution == "Renewed the VPN gateway certificate"
+    # self-service: the same search on text the employee is still typing, before any incident exists
+    tips = ResolutionSuggester(SIM).suggest_for_text("VPN keeps disconnecting", "", history)
+    assert [t.incident_id for t in tips] == [1]
+    assert ResolutionSuggester(SIM).suggest_for_text("Coffee machine is empty", "", history) == []
+
+
+# --- Predicted resolution time ------------------------------------------------------------------
+
+
+def resolved(iid: int, worked_min: float, *, priority=Priority.P2, category: int | None = 1, paused_min: float = 0):
+    """A resolved incident that took worked_min minutes of work plus paused_min waiting on the reporter."""
+    done = incident(iid, f"Past {iid}", age_min=500, status=IncidentStatus.CLOSED, priority=priority, category=category)
+    if paused_min:
+        done.sla.pause(done.created_at)
+        done.sla.resume(done.created_at + timedelta(minutes=paused_min))
+    done.sla.mark_resolved(done.created_at + timedelta(minutes=worked_min + paused_min))
+    return done
+
+
+def test_resolution_estimate_uses_median_of_same_category_and_priority_excluding_pauses():
+    current = incident(99, "Open one", age_min=10, category=1)
+    history = [resolved(1, 60), resolved(2, 90, paused_min=600), resolved(3, 600), resolved(4, 5, category=2)]
+    estimate = ResolutionTimeEstimator().estimate(current, history, "Network")
+    assert estimate is not None and estimate.median_minutes == 90 and estimate.sample_size == 3
+    assert estimate.basis == "P2 Network incidents" and "1.5 h" in estimate.reason
+    assert estimate.expected_by == current.created_at + timedelta(minutes=90)
+
+
+def test_resolution_estimate_falls_back_to_priority_then_to_nothing():
+    current = incident(99, "Open one", age_min=10, category=1)
+    history = [resolved(1, 30), resolved(2, 40, category=2), resolved(3, 50, category=3)]
+    fallback = ResolutionTimeEstimator().estimate(current, history, "Network")
+    assert fallback is not None and fallback.basis == "P2 incidents" and fallback.median_minutes == 40
+    too_few = [resolved(1, 30), resolved(2, 40, priority=Priority.P1), resolved(3, 50)]
+    assert ResolutionTimeEstimator().estimate(current, too_few) is None  # only 2 P2 samples

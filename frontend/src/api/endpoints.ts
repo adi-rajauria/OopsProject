@@ -13,9 +13,11 @@ import type {
   Overview,
   Recommendation,
   Ref,
+  ResolutionEstimate,
   RiskAssessment,
   RiskLevel,
   SearchPage,
+  SelfHelpTip,
   Service,
   ServiceStats,
   SLACheckSummary,
@@ -80,6 +82,7 @@ export const incidentsApi = {
   audit: (id: number) => http.get<AuditRecord[]>(`/incidents/${id}/audit`),
   recommendations: (id: number) => http.get<Recommendation[]>(`/incidents/${id}/recommendations`),
   suggestedResolutions: (id: number) => http.get<SuggestedResolution[]>(`/incidents/${id}/suggested-resolutions`),
+  resolutionEstimate: (id: number) => http.get<ResolutionEstimate | null>(`/incidents/${id}/resolution-estimate`),
 };
 
 export const intelligenceApi = {
@@ -87,6 +90,8 @@ export const intelligenceApi = {
     http.post<CategorySuggestion[]>("/intelligence/suggest-category", { title, description }),
   checkDuplicates: (title: string, description: string, service_id: number) =>
     http.post<IncidentLink[]>("/intelligence/check-duplicates", { title, description, service_id }),
+  selfHelp: (title: string, description: string) =>
+    http.post<SelfHelpTip[]>("/intelligence/self-help", { title, description }),
   slaRisk: (minimum: RiskLevel = "MEDIUM") => http.get<RiskAssessment[]>("/intelligence/sla-risk", { minimum }),
   correlation: () => http.get<CorrelationReport>("/intelligence/correlation"),
 };

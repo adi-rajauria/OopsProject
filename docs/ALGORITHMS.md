@@ -13,7 +13,8 @@ Code lives in `backend/app/intelligence/` (pure Python, plus scikit-learn behind
 | 4 | Automatic escalation chain | `intelligence/escalation.py` + `services/escalation_service.py` | background monitor |
 | 5 | Category suggestion | `intelligence/category_classifier.py` | report form, auto-fill when no category is chosen |
 | + | Service correlation (innovation) | `intelligence/correlation.py` | dependency graph view |
-| + | Suggested resolutions (spec G) | `intelligence/resolution_suggester.py` | incident page (staff) |
+| + | Suggested resolutions (spec G) | `intelligence/resolution_suggester.py` | incident page (staff); "Try this first" on the report form (self-service) |
+| + | Predicted resolution time | `intelligence/resolution_time.py` | incident page, Details card (everyone who can view it) |
 
 ---
 
@@ -146,3 +147,27 @@ Over incidents still open:
 
 The same TF-IDF similarity is used against **resolved** incidents that have a resolution summary. Matches with similarity
 ≥ 0.15 are shown (top 3), together with the fix that worked.
+
+**Self-service (deflection).** The same search runs on the text an employee is still typing in the report form
+(`POST /api/intelligence/self-help`, debounced). The "Try this first" card shows the past title, the fix and the similarity,
+so the employee can solve it without submitting. Incident ids and numbers are left out because employees cannot open
+other people's incidents. Example: typing "VPN keeps disconnecting" shows "Replaced a flapping uplink on the access
+switch…" at 59 %.
+
+## Predicted resolution time
+
+```
+working time = resolved_at - created_at - time paused in PENDING_INFO      (waiting on the reporter is not work)
+basis        = resolved incidents with the same priority AND category       if there are >= 3
+               else resolved incidents with the same priority               if there are >= 3
+               else no estimate
+estimate     = median working time of the basis
+expected by  = created_at + estimate + completed pauses                      (open incidents only)
+```
+
+**Why the median:** a few very late incidents (the seed has deliberate SLA violations) would pull an average far up; the
+median is the "usual" case and is easy to explain. **Why 3 samples:** below that, one incident would be presented as a
+trend. Shown on the incident page as "Typical time to resolve ~1.4 h · expected around 14:05", with the reason
+("median of 5 resolved P2 incidents"). If an open incident is already past the expected time, the page says "taking
+longer than usual" instead. While it is waiting on the reporter, no expected time is shown, because the clock is paused.
+It complements the SLA, which says what was promised; the estimate says what usually happens.

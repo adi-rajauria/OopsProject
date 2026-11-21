@@ -33,6 +33,7 @@ from app.domain.search import SearchCriteria, SortOrder
 from app.domain.users import User
 from app.intelligence.recommender import Recommendation
 from app.intelligence.resolution_suggester import SuggestedResolution
+from app.intelligence.resolution_time import ResolutionEstimate
 
 router = APIRouter(prefix="/api/incidents", tags=["incidents"])
 Staff = Annotated[User, Depends(require(Permission.VIEW_ALL_INCIDENTS))]
@@ -210,6 +211,12 @@ def audit_trail(incident_id: int, user: CurrentUser, container: Container) -> li
 @router.get("/{incident_id}/recommendations", response_model=list[Recommendation])
 def recommendations(incident_id: int, user: Staff, container: Container) -> list[Recommendation]:
     return container.intelligence.recommend_technicians(container.incidents.get(incident_id, user), user)
+
+
+@router.get("/{incident_id}/resolution-estimate", response_model=ResolutionEstimate | None)
+def resolution_estimate(incident_id: int, user: CurrentUser, container: Container) -> ResolutionEstimate | None:
+    """Anyone who may view the incident (incl. its reporter) sees the typical time to resolve."""
+    return container.intelligence.estimate_resolution(container.incidents.get(incident_id, user))
 
 
 @router.get("/{incident_id}/suggested-resolutions", response_model=list[SuggestedResolution])

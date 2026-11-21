@@ -2,7 +2,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends
 
-from app.api.schemas import LinkOut, TextPreview
+from app.api.schemas import LinkOut, SelfHelpTip, TextPreview
 from app.core.deps import Container, require
 from app.domain.enums import Permission
 from app.domain.users import User
@@ -39,6 +39,15 @@ def check_duplicates(body: TextPreview, user: Reporter, container: Container) ->
             link_type=m.link_type.value,
         )
         for m in check.matches
+    ]
+
+
+@router.post("/self-help", response_model=list[SelfHelpTip])
+def self_help(body: TextPreview, user: Reporter, container: Container) -> list[SelfHelpTip]:
+    """Fixes that worked for similar resolved incidents, so the reporter can try them before submitting."""
+    return [
+        SelfHelpTip(title=s.title, resolution=s.resolution, similarity=s.similarity)
+        for s in container.intelligence.self_help(body.title, body.description)
     ]
 
 
