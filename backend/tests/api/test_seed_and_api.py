@@ -1,5 +1,8 @@
 """Seed script + HTTP API on top of the seeded data (SQLite by default, PostgreSQL via ITSM_TEST_DATABASE_URL)."""
 
+import csv
+import io
+
 import pytest
 
 from app.domain.enums import IncidentStatus
@@ -184,6 +187,36 @@ def test_self_help_and_resolution_estimate_over_http(api):
     assert client.get(f"/api/incidents/{foreign}/resolution-estimate", headers=riya).status_code == 403
     estimates = [client.get(f"/api/incidents/{i['id']}/resolution-estimate", headers=admin).json() for i in others]
     assert any(e and e["sample_size"] >= 3 and "median of" in e["reason"] for e in estimates)
+
+
+def test_csv_exports_respect_filters_visibility_and_block_formula_injection(api):
+    client, login = api
+    admin, riya = login("admin"), login("riya")
+    services = {s["code"]: s["id"] for s in client.get("/api/lookups/services", headers=riya).json()}
+    categories = {c["code"]: c["id"] for c in client.get("/api/lookups/categories", headers=riya).json()}
+    created = client.post("/api/incidents", headers=riya, json={
+        "title": "=HYPERLINK(\"http://evil.test\",\"click\")", "description": "Formula in the title of this report.",
+        "service_id": services["WIKI"], "impact": 1, "urgency": 1, "category_id": categories["APPLICATION"],
+    })
+    assert created.status_code == 201
+
+    def rows(headers: dict, **params) -> list[list[str]]:
+        response = client.get("/api/incidents/export.csv", headers=headers, params=params)
+        assert response.status_code == 200 and response.headers["content-type"].startswith("text/csv")
+        assert "attachment" in response.headers["content-disposition"]
+        return list(csv.reader(io.StringIO(response.content.decode("utf-8-sig"))))
+
+    everything = rows(admin)
+    total = client.get("/api/incidents", headers=admin).json()["total"]
+    assert everything[0][:3] == ["Number", "Title", "Status"] and len(everything) == total + 1  # all pages, not 20
+    assert all(r[3] == "P1" for r in rows(admin, priority="P1")[1:])
+    own = rows(riya)[1:]
+    assert own and all(r[7] == "Riya Kapoor" for r in own)  # employees only export their own incidents
+    assert any(r[1] == "'=HYPERLINK(\"http://evil.test\",\"click\")" for r in own)  # neutralised for Excel
+
+    violations = client.get("/api/reports/sla/violations.csv", headers=admin)
+    assert violations.status_code == 200 and violations.text.count("\n") > 1
+    assert client.get("/api/reports/sla/violations.csv", headers=riya).status_code == 403
 
 
 def test_event_stream_rejects_bad_tokens(api):
