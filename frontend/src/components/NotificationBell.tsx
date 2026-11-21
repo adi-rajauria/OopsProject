@@ -4,6 +4,7 @@ import { notificationsApi } from "../api/endpoints";
 import type { Notification } from "../api/types";
 import { useLiveRefresh } from "../hooks/LiveEvents";
 import { relativeTime } from "../lib/format";
+import { BellIcon } from "./icons";
 
 const REFRESH_MS = 60_000;
 
@@ -45,25 +46,24 @@ export function NotificationBell() {
   return (
     <div className="relative" ref={panel}>
       <button
-        className="relative rounded-full p-2 text-slate-600 hover:bg-slate-100"
+        className="relative grid h-8 w-8 place-items-center rounded text-muted hover:bg-sunken hover:text-fg"
         aria-label={`Notifications: ${count} unread`}
+        aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
       >
-        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={1.8}>
-          <path d="M15 17h5l-1.4-1.4A2 2 0 0 1 18 14.2V11a6 6 0 1 0-12 0v3.2c0 .5-.2 1-.6 1.4L4 17h5m6 0a3 3 0 1 1-6 0m6 0H9" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
+        <BellIcon size={17} />
         {count > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 min-w-5 rounded-full bg-rose-600 px-1 text-center text-[11px] leading-5 font-semibold text-white">
+          <span className="absolute top-0.5 right-0 min-w-4 rounded-[3px] bg-critical-solid px-1 text-center font-mono text-[10px] leading-4 font-medium text-white">
             {count > 99 ? "99+" : count}
           </span>
         )}
       </button>
       {open && (
-        <div className="absolute right-0 z-40 mt-2 w-96 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
-          <div className="flex items-center justify-between border-b border-slate-100 px-4 py-2.5">
-            <span className="text-sm font-semibold">Notifications</span>
+        <div className="absolute right-0 z-40 mt-1.5 w-96 max-w-[calc(100vw-2rem)] overflow-hidden rounded-md border border-line bg-surface shadow-pop">
+          <div className="flex items-center justify-between border-b border-line px-4 py-2.5">
+            <span className="text-[13px] font-semibold">Notifications</span>
             <button
-              className="text-xs text-[var(--accent)] hover:underline"
+              className="text-[12px] font-medium text-brand hover:underline"
               onClick={async () => {
                 await notificationsApi.markAllRead();
                 setItems((all) => all.map((n) => ({ ...n, is_read: true })));
@@ -73,25 +73,27 @@ export function NotificationBell() {
               Mark all read
             </button>
           </div>
-          <ul className="max-h-96 overflow-y-auto">
-            {items.length === 0 && <li className="px-4 py-6 text-center text-sm text-slate-500">Nothing yet</li>}
+          <ul className="max-h-96 divide-y divide-line overflow-y-auto">
+            {items.length === 0 && <li className="px-4 py-8 text-center text-[13px] text-muted">Nothing yet</li>}
             {items.map((n) => (
               <li key={n.id}>
                 <button
-                  className={`block w-full border-b border-slate-50 px-4 py-2.5 text-left hover:bg-slate-50 ${n.is_read ? "" : "bg-[var(--accent-soft)]/50"}`}
+                  className="relative block w-full px-4 py-2.5 text-left hover:bg-sunken"
                   onClick={() => openNotification(n)}
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <span className={`text-sm ${n.is_read ? "text-slate-700" : "font-semibold text-slate-900"}`}>{n.title}</span>
-                    <span className="shrink-0 text-xs text-slate-400">{relativeTime(n.created_at)}</span>
+                  {!n.is_read && <span aria-label="unread" className="absolute top-4 left-1.5 h-1.5 w-1.5 rounded-full bg-brand" />}
+                  <div className="flex items-start justify-between gap-3">
+                    <span className={`text-[13px] ${n.is_read ? "text-muted" : "font-medium text-fg"}`}>{n.title}</span>
+                    <span className="shrink-0 font-mono text-[11px] text-faint">{relativeTime(n.created_at)}</span>
                   </div>
-                  <p className="line-clamp-2 text-xs text-slate-500">{n.body}</p>
+                  <p className="line-clamp-2 text-[12px] text-muted">{n.body}</p>
                 </button>
               </li>
             ))}
           </ul>
-          <Link to="/notifications" onClick={() => setOpen(false)} className="block px-4 py-2 text-center text-sm text-[var(--accent)] hover:bg-slate-50">
-            View all
+          <Link to="/notifications" onClick={() => setOpen(false)}
+                className="block border-t border-line px-4 py-2 text-center text-[13px] font-medium text-brand hover:bg-sunken">
+            View all notifications
           </Link>
         </div>
       )}

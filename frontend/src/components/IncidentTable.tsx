@@ -38,27 +38,27 @@ export function IncidentTable({ incidents, columns = ["service", "technician", "
             const open = !["RESOLVED", "VERIFIED", "CLOSED"].includes(i.status);
             return (
               <tr key={i.id} className="cursor-pointer" onClick={() => navigate(`/incidents/${i.id}`)}>
-                <td className="max-w-md">
+                <td className="max-w-md min-w-56">
                   <div className="flex items-center gap-2">
-                    <span className="font-mono text-xs text-slate-500">{i.number}</span>
+                    <span className="mono text-faint">{i.number}</span>
                     <EscalationBadge level={i.escalation_level} />
                   </div>
                   <a
                     href={`/incidents/${i.id}`}
                     onClick={(e) => e.preventDefault()}
-                    className="font-medium text-slate-900 hover:text-[var(--accent)]"
+                    className="font-medium text-fg hover:text-brand"
                   >
                     {i.title}
                   </a>
-                  {i.category && <div className="text-xs text-slate-500">{i.category.name}</div>}
+                  {i.category && <div className="text-[12px] text-muted">{i.category.name}</div>}
                 </td>
                 <td><PriorityBadge priority={i.priority} /></td>
                 <td><StatusBadge status={i.status} /></td>
                 <td><SlaBadge status={i.sla_status} /></td>
-                {show("service") && <td className="text-slate-600">{i.service?.name}</td>}
-                {show("reporter") && <td className="text-slate-600">{i.reporter?.name}</td>}
+                {show("service") && <td className="text-muted">{i.service?.name}</td>}
+                {show("reporter") && <td className="text-muted">{i.reporter?.name}</td>}
                 {show("technician") && (
-                  <td className="text-slate-600">{i.technician?.name ?? <span className="text-amber-700">Unassigned</span>}</td>
+                  <td className="text-muted">{i.technician?.name ?? <span className="font-medium text-warning">Unassigned</span>}</td>
                 )}
                 {show("due") && (
                   <td>
@@ -66,7 +66,7 @@ export function IncidentTable({ incidents, columns = ["service", "technician", "
                            done={!open || i.status === "PENDING_INFO"} />
                   </td>
                 )}
-                <td className="whitespace-nowrap text-slate-500">{relativeTime(i.created_at)}</td>
+                <td className="font-mono text-[12px] whitespace-nowrap text-muted">{relativeTime(i.created_at)}</td>
               </tr>
             );
           })}

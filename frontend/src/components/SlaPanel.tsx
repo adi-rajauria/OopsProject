@@ -6,12 +6,12 @@ import { SlaBadge } from "./badges";
 /** A compact countdown for tables: "12 min left" / "overdue 5 min". */
 export function DueIn({ due, done = false }: { due: string | null; done?: boolean }) {
   const now = useNow();
-  if (!due || done) return <span className="text-slate-400">—</span>;
+  if (!due || done) return <span className="text-faint">—</span>;
   const minutes = Math.round((new Date(due).getTime() - now) / 60000);
   return minutes >= 0 ? (
-    <span className="whitespace-nowrap text-slate-600 tabular-nums">{formatMinutes(minutes)} left</span>
+    <span className="font-mono text-[12px] whitespace-nowrap text-muted tabular-nums">{formatMinutes(minutes)} left</span>
   ) : (
-    <span className="font-medium whitespace-nowrap text-rose-600 tabular-nums">overdue {formatMinutes(-minutes)}</span>
+    <span className="font-mono text-[12px] font-medium whitespace-nowrap text-critical tabular-nums">overdue {formatMinutes(-minutes)}</span>
   );
 }
 
@@ -36,22 +36,27 @@ function Target({ label, startMs, targetMinutes, due, metAt, breached, pausedMs,
 
   let state: string;
   if (metAt) state = `${breached ? "met late" : "met"} · ${formatDateTime(metAt)}`;
-  else if (paused) state = "paused - waiting for the reporter";
+  else if (paused) state = "paused, waiting for the reporter";
   else state = remaining >= 0 ? `${formatMinutes(remaining)} left` : `overdue by ${formatMinutes(-remaining)}`;
 
-  const colour = paused && !metAt ? "bg-slate-400" : overdue || pct >= 100 ? "bg-rose-500" : pct >= warningPct ? "bg-amber-500" : "bg-emerald-500";
+  const colour = paused && !metAt
+    ? "bg-faint"
+    : overdue || pct >= 100 ? "bg-critical-solid" : pct >= warningPct ? "bg-warning-solid" : metAt ? "bg-ok-solid" : "bg-brand";
   return (
     <div>
-      <div className="mb-1 flex items-baseline justify-between gap-3 text-sm">
-        <span className="font-medium text-slate-700">
-          {label} <span className="font-normal text-slate-500">({formatMinutes(targetMinutes)} target)</span>
+      <div className="mb-1.5 flex items-baseline justify-between gap-3">
+        <span className="text-[13px] font-medium text-fg">
+          {label} <span className="font-mono text-[12px] font-normal text-muted">/ {formatMinutes(targetMinutes)}</span>
         </span>
-        <span className={overdue ? "font-medium text-rose-600" : "text-slate-500"}>{state}</span>
+        <span className={`text-right text-[12px] ${overdue ? "font-medium text-critical" : "text-muted"}`}>{state}</span>
       </div>
-      <div className="h-2 overflow-hidden rounded-full bg-slate-100" role="meter" aria-valuenow={Math.min(pct, 100)} aria-label={`${label} time used`}>
-        <div className={`h-full rounded-full ${colour}`} style={{ width: `${Math.min(100, pct)}%` }} />
+      <div className="relative h-1.5 bg-sunken" role="meter" aria-valuenow={Math.min(pct, 100)} aria-valuemin={0} aria-valuemax={100}
+           aria-label={`${label} time used`}>
+        <div className={`h-full ${colour}`} style={{ width: `${Math.min(100, pct)}%` }} />
+        {/* the warning threshold, so the bar reads as a clock with a mark on it */}
+        <span className="absolute top-[-2px] h-[10px] w-px bg-line-strong" style={{ left: `${warningPct}%` }} aria-hidden />
       </div>
-      <p className="mt-1 text-xs text-slate-500">Due {formatDateTime(due)}</p>
+      <p className="mt-1 font-mono text-[11.5px] text-faint">due {formatDateTime(due)}</p>
     </div>
   );
 }
@@ -63,7 +68,7 @@ export function SlaPanel({ sla }: { sla: SLAInfo }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3>Service level</h3>
+        <h2 className="text-[13.5px]">Service level</h2>
         <SlaBadge status={sla.status} />
       </div>
       <Target label="Response" startMs={startMs} targetMinutes={sla.response_minutes} due={sla.response_due_at}
@@ -73,7 +78,7 @@ export function SlaPanel({ sla }: { sla: SLAInfo }) {
               metAt={sla.resolved_at} breached={sla.resolution_breached} pausedMs={sla.paused_seconds * 1000}
               paused={sla.paused} warningPct={sla.warning_pct} now={now} />
       {sla.paused_seconds > 0 && (
-        <p className="text-xs text-slate-500">
+        <p className="text-[12px] text-muted">
           The clock was paused for {formatMinutes(sla.paused_seconds / 60)} while waiting for information, so the
           resolution deadline moved later by the same amount.
         </p>
