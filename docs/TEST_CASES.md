@@ -1,6 +1,9 @@
 # Test cases
 
 Run: `cd backend && .venv/bin/pytest` (106 test functions, 170 cases with parametrisation; about 20 s, mostly the seeded API tests).
+CI (`.github/workflows/ci.yml`, GitHub Actions) runs on every push and pull request: the whole suite on SQLite and again on
+a PostgreSQL 18 service container, plus `alembic upgrade head` and the seed script on a fresh PostgreSQL database, and the
+frontend type-check + build.
 Types: **N** normal operation · **B** boundary · **I** invalid input · **E** exception · **A** authorization · **R** business rule · **S** state transition.
 
 Fixture world (`tests/conftest.py`): services PAY (criticality 4), MAIL (3), WIKI (1); categories APPLICATION, NETWORK, DATABASE, HARDWARE;
