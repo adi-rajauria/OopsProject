@@ -9,9 +9,9 @@ export function DueIn({ due, done = false }: { due: string | null; done?: boolea
   if (!due || done) return <span className="text-faint">—</span>;
   const minutes = Math.round((new Date(due).getTime() - now) / 60000);
   return minutes >= 0 ? (
-    <span className="font-mono text-[12px] whitespace-nowrap text-muted tabular-nums">{formatMinutes(minutes)} left</span>
+    <span className="text-[12.5px] whitespace-nowrap text-muted tabular-nums">{formatMinutes(minutes)} left</span>
   ) : (
-    <span className="font-mono text-[12px] font-medium whitespace-nowrap text-critical tabular-nums">overdue {formatMinutes(-minutes)}</span>
+    <span className="text-[12.5px] font-medium whitespace-nowrap text-critical tabular-nums">overdue {formatMinutes(-minutes)}</span>
   );
 }
 
