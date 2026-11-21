@@ -9,6 +9,7 @@
 | Secure API access | CORS limited to the Vite origin; only the `Authorization` and `Content-Type` headers allowed; the error envelope never leaks stack traces (unexpected errors → generic 500 + server log) | `main.py`, `core/errors.py` |
 | Unauthorized operations | `UnauthorizedOperationError` → 403; `InvalidTokenError` / `InvalidCredentialsError` → 401 with `WWW-Authenticate: Bearer` | `core/errors.py` |
 | No secrets in code | JWT secret and DB URL come from `backend/.env` (gitignored); the app refuses to start with a secret shorter than 32 characters | `core/config.py`, `.env.example` |
+| CSV / formula injection | Exported cells that start with `=`, `+`, `-`, `@`, tab or CR get a leading apostrophe, so a title like `=HYPERLINK(...)` is shown as text instead of running as a formula in Excel. Exports use the same visibility rules as search (an employee only exports their own incidents) and need a valid token | `api/csv_export.py` |
 | Auditability | Every state change, admin action and login-relevant account change is recorded append-only with actor, timestamp, previous and new state | `observers/audit_logger.py` |
 
 ## Deliberate trade-offs (documented, not hidden)

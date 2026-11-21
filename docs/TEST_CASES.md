@@ -1,6 +1,6 @@
 # Test cases
 
-Run: `cd backend && .venv/bin/pytest` (106 test functions, 170 cases with parametrisation; about 20 s, mostly the seeded API tests).
+Run: `cd backend && .venv/bin/pytest` (107 test functions, 171 cases with parametrisation; about 20 s, mostly the seeded API tests).
 CI (`.github/workflows/ci.yml`, GitHub Actions) runs on every push and pull request: the whole suite on SQLite and again on
 a PostgreSQL 18 service container, plus `alembic upgrade head` and the seed script on a fresh PostgreSQL database, and the
 frontend type-check + build.
@@ -146,6 +146,7 @@ Clock fixed at 2026-11-16 10:00 UTC and advanced explicitly.
 | TC-94 | Role guards (11 cases) | employee/technician/admin x admin, reports, intelligence, queue | 403 or 200 exactly as designed | A |
 | TC-95 | Search parameters and HTTP error mapping | multi-value filters, number, own scope, number "ABC", page size 101, status "DONE"; impact 5, unknown service, no category, duplicate, force | filtered results; 422 x3; 422, 404 `SERVICE_NOT_FOUND`, 422 `INVALID_INCIDENT`, 409 `DUPLICATE_INCIDENT` with similarity >= 0.85, 201 | I/E |
 | TC-96 | Dashboards, intelligence, admin over HTTP | reports, correlation, recurring problems, risk, strategy switch, delete default policy, check-now, create technician | data present, PAY hotspot, exactly one recurring problem (Corporate VPN x3), ROUND_ROBIN active, 422, 200, 201 with skills | N |
+| TC-106 | CSV export | admin exports everything; P1 filter; employee exports; title `=HYPERLINK(...)`; SLA violations CSV as admin and as employee | text/csv attachment with all rows (more than one page); only P1 rows; only the employee's own incidents; cell becomes `'=HYPERLINK(...)`; violations with readable "... UTC" times; 403 | N/A/R |
 | TC-97 | Event stream authentication | bad token | 401 | A |
 | TC-98 | Background monitor pass | at seed time; 30 min later | no escalations; then new violations and escalations | R |
 | TC-101 | Self-service fixes, severity hint and resolution estimate over HTTP | employee types a VPN problem; empty title; "All users cannot pay"; estimate for own incident, for someone else's, admin over all incidents | tips with a fix and no incident id; 422; impact 4 + urgency 4 with reason `mentions "cannot pay"`; 200; 403; at least one estimate from >= 3 samples with a "median of" reason | N/I/A |

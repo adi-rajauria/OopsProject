@@ -1,4 +1,4 @@
-import { http, type Query } from "./client";
+import { download, http, type Query } from "./client";
 import type {
   AuditRecord,
   Category,
@@ -61,6 +61,7 @@ export const authApi = {
 
 export const incidentsApi = {
   search: (query: Query) => http.get<SearchPage>("/incidents", query),
+  exportCsv: (query: Query) => download("/incidents/export.csv", query, "incidents.csv"),
   get: (id: number) => http.get<IncidentDetail>(`/incidents/${id}`),
   create: (body: NewIncident) => http.post<IncidentDetail>("/incidents", body),
   update: (id: number, body: IncidentPatch) => http.patch<IncidentDetail>(`/incidents/${id}`, body),
@@ -126,6 +127,7 @@ export const reportsApi = {
   technicians: () => http.get<TechnicianStats[]>("/reports/technicians"),
   services: () => http.get<ServiceStats[]>("/reports/services"),
   sla: () => http.get<SLAReport>("/reports/sla"),
+  slaViolationsCsv: () => download("/reports/sla/violations.csv", undefined, "sla-violations.csv"),
   trends: (days = 14) => http.get<TrendPoint[]>("/reports/trends", { days }),
 };
 

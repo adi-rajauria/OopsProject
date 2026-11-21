@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router";
 import { incidentsApi, lookupsApi } from "../../api/endpoints";
 import { ALL_PRIORITIES, ALL_SLA_STATUSES, ALL_STATUSES, type SortOrder } from "../../api/types";
 import { isStaff, useUser } from "../../auth/AuthContext";
+import { DownloadButton } from "../../components/DownloadButton";
 import { IncidentTable } from "../../components/IncidentTable";
 import { Card, ErrorMessage, PageHeader, Pagination, Spinner } from "../../components/ui";
 import { useLiveRefresh } from "../../hooks/LiveEvents";
@@ -169,13 +170,19 @@ export function IncidentSearchPage() {
         <Card flush
               title={result.data ? `${result.data.total} result${result.data.total === 1 ? "" : "s"}` : "Results"}
               actions={
-                <select className="input h-7 w-auto py-0 text-[13px]" aria-label="Sort" value={params.get("sort") ?? "-created_at"}
-                        onChange={(e) => update({ sort: e.target.value as SortOrder })}>
-                  <option value="-created_at">Newest first</option>
-                  <option value="created_at">Oldest first</option>
-                  <option value="priority">Priority</option>
-                  <option value="-updated_at">Recently updated</option>
-                </select>
+                <div className="flex items-center gap-2">
+                  {/* Exports every matching incident (all pages) with the same filters and visibility. */}
+                  {(result.data?.total ?? 0) > 0 && (
+                    <DownloadButton onDownload={() => incidentsApi.exportCsv({ ...query, page: undefined, page_size: undefined })} />
+                  )}
+                  <select className="input h-7 w-auto py-0 text-[13px]" aria-label="Sort" value={params.get("sort") ?? "-created_at"}
+                          onChange={(e) => update({ sort: e.target.value as SortOrder })}>
+                    <option value="-created_at">Newest first</option>
+                    <option value="created_at">Oldest first</option>
+                    <option value="priority">Priority</option>
+                    <option value="-updated_at">Recently updated</option>
+                  </select>
+                </div>
               }>
           {result.error && <div className="p-4"><ErrorMessage error={result.error} onRetry={result.reload} /></div>}
           {result.loading && !result.data && <div className="px-4"><Spinner /></div>}

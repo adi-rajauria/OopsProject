@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, Response
@@ -36,8 +37,8 @@ def sla(user: Manager, container: Container) -> SLAReport:
 def sla_violations_csv(user: Manager, container: Container) -> Response:
     report = container.reports.sla_report(user)
     rows = [
-        (v.number, v.title, v.priority, v.status, v.service, v.technician, v.target.value, v.due_at, v.detected_at,
-         v.overdue_minutes)
+        (v.number, v.title, v.priority, v.status, v.service, v.technician, v.target.value,
+         datetime.fromisoformat(v.due_at), datetime.fromisoformat(v.detected_at), v.overdue_minutes)
         for v in report.violations
     ]
     header = ("Number", "Title", "Priority", "Status", "Service", "Technician", "Target", "Due", "Detected",

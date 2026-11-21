@@ -1,6 +1,7 @@
 import { Link } from "react-router";
 import { intelligenceApi, reportsApi } from "../../api/endpoints";
 import { PriorityBadge, RiskBadge, StatusBadge } from "../../components/badges";
+import { DownloadButton } from "../../components/DownloadButton";
 import { Card, ErrorMessage, PageHeader, Spinner, Stat, StatStrip } from "../../components/ui";
 import { useLiveRefresh } from "../../hooks/LiveEvents";
 import { useAsync } from "../../hooks/useAsync";
@@ -49,7 +50,8 @@ export function SlaReportPage() {
         </ul>
       </Card>
 
-      <Card title={`Recorded violations (${violations.length})`} className="mt-6">
+      <Card title={`Recorded violations (${violations.length})`} className="mt-6"
+            actions={violations.length > 0 && <DownloadButton onDownload={reportsApi.slaViolationsCsv} />}>
         <div className="overflow-x-auto">
           <table className="data-table">
             <thead>

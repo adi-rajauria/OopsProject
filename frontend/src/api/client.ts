@@ -48,11 +48,7 @@ function buildUrl(path: string, query?: Query): string {
   return `/api${path}${qs ? `?${qs}` : ""}`;
 }
 
-export async function request<T>(
-  method: string,
-  path: string,
-  options: { body?: unknown; query?: Query } = {},
-): Promise<T> {
+async function send(method: string, path: string, options: { body?: unknown; query?: Query } = {}): Promise<Response> {
   const headers: Record<string, string> = {};
   const token = tokenStore.get();
   if (token) headers.Authorization = `Bearer ${token}`;
@@ -68,15 +64,12 @@ export async function request<T>(
   } catch {
     throw new ApiError(0, "NETWORK_ERROR", "Cannot reach the server. Is the backend running?");
   }
-
-  if (response.status === 204) return undefined as T;
-  const payload = await response.json().catch(() => null);
   if (!response.ok) {
     if (response.status === 401 && token) {
       tokenStore.clear();
       unauthorizedHandler();
     }
-    const error = (payload as ApiErrorBody | null)?.error;
+    const error = ((await response.json().catch(() => null)) as ApiErrorBody | null)?.error;
     throw new ApiError(
       response.status,
       error?.code ?? "HTTP_ERROR",
@@ -84,7 +77,30 @@ export async function request<T>(
       error?.details ?? {},
     );
   }
-  return payload as T;
+  return response;
+}
+
+export async function request<T>(
+  method: string,
+  path: string,
+  options: { body?: unknown; query?: Query } = {},
+): Promise<T> {
+  const response = await send(method, path, options);
+  if (response.status === 204) return undefined as T;
+  return (await response.json().catch(() => null)) as T;
+}
+
+/** Fetch a file with the user's token (a plain link cannot send it) and hand it to the browser as a download. */
+export async function download(path: string, query: Query | undefined, fallbackName: string): Promise<void> {
+  const response = await send("GET", path, { query });
+  const disposition = response.headers.get("Content-Disposition") ?? "";
+  const name = /filename="([^"]+)"/.exec(disposition)?.[1] ?? fallbackName;
+  const url = URL.createObjectURL(await response.blob());
+  const link = Object.assign(document.createElement("a"), { href: url, download: name });
+  document.body.append(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
 }
 
 export const http = {

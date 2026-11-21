@@ -215,7 +215,9 @@ def test_csv_exports_respect_filters_visibility_and_block_formula_injection(api)
     assert any(r[1] == "'=HYPERLINK(\"http://evil.test\",\"click\")" for r in own)  # neutralised for Excel
 
     violations = client.get("/api/reports/sla/violations.csv", headers=admin)
-    assert violations.status_code == 200 and violations.text.count("\n") > 1
+    assert violations.status_code == 200
+    violation_rows = list(csv.reader(io.StringIO(violations.content.decode("utf-8-sig"))))
+    assert len(violation_rows) > 1 and violation_rows[1][7].endswith(" UTC")  # same readable timestamps
     assert client.get("/api/reports/sla/violations.csv", headers=riya).status_code == 403
 
 
