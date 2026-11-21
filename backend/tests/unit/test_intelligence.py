@@ -15,7 +15,7 @@ from app.intelligence.category_classifier import CategorySuggester, LabelledText
 from app.intelligence.correlation import Health, IncidentCorrelator
 from app.intelligence.duplicate_detector import DuplicateDetector
 from app.intelligence.escalation import EscalationPolicy
-from app.intelligence.recommender import TechnicianRecommender
+from app.intelligence.recommender import RatingSummary, TechnicianRecommender
 from app.intelligence.recurring import RecurringProblemDetector
 from app.intelligence.resolution_suggester import ResolutionSuggester
 from app.intelligence.resolution_time import ResolutionTimeEstimator
@@ -161,6 +161,19 @@ def test_recommender_ranks_with_reasons_and_puts_ineligible_last():
     assert ranked[0].score == pytest.approx(sum(ranked[0].breakdown.values()))
     critical = TechnicianRecommender().recommend(candidates[:3], "NETWORK", Priority.P1)
     assert critical[0].breakdown["experience"] > ranked[0].breakdown["experience"]  # P1 values experience more
+
+
+def test_recommender_prefers_better_rated_technician_and_ignores_too_few_ratings():
+    twins = [TechnicianCandidate(tech(1, ["NETWORK"], 5), 1, 0), TechnicianCandidate(tech(2, ["NETWORK"], 5), 1, 0)]
+    rated = TechnicianRecommender().recommend(
+        twins, "NETWORK", Priority.P3, ratings={1: RatingSummary(2.0, 3), 2: RatingSummary(4.8, 5)}
+    )
+    assert [r.technician_id for r in rated] == [2, 1]
+    assert "rated 4.8/5 by 5 reporter(s)" in rated[0].reasons
+    assert rated[0].breakdown["rating"] == pytest.approx(9.5) and rated[1].breakdown["rating"] == pytest.approx(2.5)
+    single = TechnicianRecommender().recommend(twins, "NETWORK", Priority.P3, ratings={2: RatingSummary(5.0, 1)})
+    assert single[0].score == single[1].score  # one rating is not enough to separate them
+    assert "not enough ratings yet" in single[0].reasons
 
 
 # --- Feature 3: SLA risk -------------------------------------------------------------------------

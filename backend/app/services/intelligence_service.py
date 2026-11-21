@@ -1,3 +1,6 @@
+from collections import defaultdict
+from statistics import mean
+
 from app.domain.clock import Clock
 from app.domain.enums import IncidentStatus, Permission
 from app.domain.exceptions import UnauthorizedOperationError
@@ -7,7 +10,7 @@ from app.domain.users import User
 from app.intelligence.category_classifier import CategorySuggester, CategorySuggestion, LabelledText
 from app.intelligence.correlation import CorrelationReport, IncidentCorrelator
 from app.intelligence.duplicate_detector import DuplicateCheck, DuplicateDetector
-from app.intelligence.recommender import Recommendation, TechnicianRecommender
+from app.intelligence.recommender import RatingSummary, Recommendation, TechnicianRecommender
 from app.intelligence.recurring import RecurringProblem, RecurringProblemDetector
 from app.intelligence.resolution_suggester import ResolutionSuggester, SuggestedResolution
 from app.intelligence.resolution_time import ResolutionEstimate, ResolutionTimeEstimator
@@ -80,8 +83,20 @@ class IntelligenceService:
         _require_staff(viewer)
         category = self._uow.categories.get(incident.category_id) if incident.category_id else None
         return self._recommender.recommend(
-            self._assignment.candidates_for(incident), category.code if category else None, incident.priority
+            self._assignment.candidates_for(incident),
+            category.code if category else None,
+            incident.priority,
+            ratings=self._ratings_by_technician(),
         )
+
+    def _ratings_by_technician(self) -> dict[int, RatingSummary]:
+        technician_of = {i.id: i.assigned_technician_id for i in self._uow.incidents.list_all()}
+        stars: dict[int, list[int]] = defaultdict(list)
+        for feedback in self._uow.feedback.list():
+            technician_id = technician_of.get(feedback.incident_id)
+            if technician_id is not None:
+                stars[technician_id].append(feedback.rating)
+        return {tid: RatingSummary(mean(values), len(values)) for tid, values in stars.items()}
 
     def suggested_resolutions(self, incident: Incident, viewer: User) -> list[SuggestedResolution]:
         _require_staff(viewer)

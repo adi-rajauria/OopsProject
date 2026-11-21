@@ -67,13 +67,16 @@ For each active technician (except the current assignee):
 | Factor | Value in [0,1] | Weight (P3/P4) | Weight (P1/P2) |
 |---|---|---|---|
 | Skill matches incident category | 1 or 0 | 0.40 | 0.40 |
-| Free capacity | 1 − active / max workload | 0.25 | 0.15 |
+| Free capacity | 1 − active / max workload | 0.20 | 0.10 |
 | Experience | min(years, 15) / 15 | 0.15 | 0.25 |
-| History on this service | min(resolved incidents here, 5) / 5 | 0.15 | 0.15 |
+| History on this service | min(resolved incidents here, 5) / 5 | 0.10 | 0.10 |
+| Reporter ratings | (average stars − 1) / 4; 0.5 (neutral) with fewer than 2 ratings | 0.10 | 0.10 |
 | Available and under the cap | 1 or 0 | 0.05 | 0.05 |
 
 `score = 100 x Σ weight x value`. The top 3 are returned with a per-factor breakdown and readable reasons
-("has NETWORK skill · 1/8 active incidents · 10 yrs experience · resolved 4 incident(s) on this service").
+("has NETWORK skill · 1/8 active incidents · 10 yrs experience · resolved 4 incident(s) on this service · rated 4.3/5 by
+3 reporter(s)"). Ratings come from the employee feedback given at verification; the neutral value for technicians with
+fewer than 2 ratings means a new technician is neither rewarded nor punished for having no history.
 Ineligible technicians are listed last and flagged. Critical incidents shift weight from load-spreading to experience.
 The **assignment strategies** (Skill / Load / Round-robin / Experience) *decide*; the recommender *explains* and supports
 an administrator's manual choice.
