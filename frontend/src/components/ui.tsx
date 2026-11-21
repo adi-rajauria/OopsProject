@@ -125,15 +125,6 @@ export function StatStrip({ children, columns = 4 }: { children: ReactNode; colu
   );
 }
 
-/** Kept for pages not yet moved to StatStrip. */
-export function StatCard(props: { label: string; value: ReactNode; hint?: ReactNode; tone?: Tone }) {
-  return (
-    <div className="panel">
-      <Stat {...props} />
-    </div>
-  );
-}
-
 export function Field({ label, hint, children, htmlFor }: {
   label: string;
   hint?: ReactNode;

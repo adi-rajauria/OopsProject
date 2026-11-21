@@ -56,14 +56,14 @@ function AuditTable() {
               <tbody>
                 {records.data.map((r) => (
                   <tr key={r.id}>
-                    <td className="text-xs whitespace-nowrap text-slate-500">{formatDateTime(r.created_at)}</td>
+                    <td className="text-xs whitespace-nowrap text-muted">{formatDateTime(r.created_at)}</td>
                     <td className="text-xs whitespace-nowrap">{r.actor_name}</td>
                     <td className="text-xs font-semibold whitespace-nowrap">{titleCase(r.action)}</td>
-                    <td>{r.incident_id ? <Link className="link font-mono text-xs" to={`/incidents/${r.incident_id}`}>{r.incident_number}</Link> : "—"}</td>
-                    <td className="font-mono text-[11px] whitespace-nowrap text-slate-500">
+                    <td>{r.incident_id ? <Link className="link mono" to={`/incidents/${r.incident_id}`}>{r.incident_number}</Link> : "—"}</td>
+                    <td className="font-mono text-[11px] whitespace-nowrap text-muted">
                       {r.new_state ? `${r.previous_state ?? "∅"} → ${r.new_state}` : ""}
                     </td>
-                    <td className="text-sm text-slate-700">{r.description}</td>
+                    <td className="text-sm text-fg">{r.description}</td>
                   </tr>
                 ))}
               </tbody>
@@ -91,12 +91,12 @@ function DeliveryLog() {
           <tbody>
             {log.data.map((n) => (
               <tr key={n.id}>
-                <td className="text-xs whitespace-nowrap text-slate-500">{formatDateTime(n.created_at)}</td>
-                <td><span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs font-semibold">{n.channel.replace("_", "-")}</span></td>
+                <td className="text-xs whitespace-nowrap text-muted">{formatDateTime(n.created_at)}</td>
+                <td><span className="rounded bg-sunken px-1.5 py-0.5 text-xs font-semibold">{n.channel.replace("_", "-")}</span></td>
                 <td className="text-xs">user #{n.recipient_id}</td>
-                <td><div className="text-sm font-medium">{n.title}</div><div className="text-xs text-slate-500">{n.body}</div></td>
-                <td>{n.incident_id ? <Link className="link font-mono text-xs" to={`/incidents/${n.incident_id}`}>{n.incident_number}</Link> : "—"}</td>
-                <td className="text-xs">{n.delivered ? <span className="text-emerald-700">delivered</span> : <span className="text-rose-600" title={n.delivery_error ?? ""}>failed: {n.delivery_error}</span>}</td>
+                <td><div className="text-sm font-medium">{n.title}</div><div className="text-xs text-muted">{n.body}</div></td>
+                <td>{n.incident_id ? <Link className="link mono" to={`/incidents/${n.incident_id}`}>{n.incident_number}</Link> : "—"}</td>
+                <td className="text-xs">{n.delivered ? <span className="text-ok">delivered</span> : <span className="text-critical" title={n.delivery_error ?? ""}>failed: {n.delivery_error}</span>}</td>
               </tr>
             ))}
           </tbody>

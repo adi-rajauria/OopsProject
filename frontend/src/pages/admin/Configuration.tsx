@@ -35,23 +35,23 @@ function AssignmentTab() {
   return (
     <div className="grid gap-6 lg:grid-cols-3">
       <Card title="Technician assignment strategy" className="lg:col-span-2">
-        <p className="mb-4 text-sm text-slate-500">Applied to every new incident from the moment you switch. Each strategy is a separate class (Strategy pattern).</p>
+        <p className="mb-4 text-sm text-muted">Applied to every new incident from the moment you switch. Each strategy is a separate class (Strategy pattern).</p>
         <div className="grid gap-3 sm:grid-cols-2">
           {strategies.data.map((s) => (
             <button key={s.key} aria-pressed={s.active}
                     onClick={() => !s.active && save(`Assignment strategy switched to ${s.name}`, () => adminApi.setStrategy(s.key))}
-                    className={`rounded-xl border p-4 text-left transition ${s.active ? "border-[var(--accent)] bg-[var(--accent-soft)] ring-1 ring-[var(--accent)]" : "border-slate-200 hover:border-slate-300"}`}>
+                    className={`rounded-md border p-4 text-left transition ${s.active ? "border-brand bg-brand-soft ring-1 ring-brand" : "border-line hover:border-line-strong"}`}>
               <div className="flex items-center justify-between">
-                <span className="font-semibold text-slate-800">{s.name}</span>
-                {s.active && <span className="text-xs font-semibold text-[var(--accent-strong)]">ACTIVE</span>}
+                <span className="font-semibold text-fg">{s.name}</span>
+                {s.active && <span className="text-xs font-semibold text-brand-strong">ACTIVE</span>}
               </div>
-              <p className="mt-1 text-sm text-slate-600">{s.description}</p>
+              <p className="mt-1 text-sm text-muted">{s.description}</p>
             </button>
           ))}
         </div>
       </Card>
       <Card title="Automatic escalation" className="h-fit">
-        <p className="text-sm text-slate-600">Unacknowledged incidents climb Technician → Team Lead → System Admin → IT Manager, one level per response window after the response deadline.</p>
+        <p className="text-sm text-muted">Unacknowledged incidents climb Technician → Team Lead → System Admin → IT Manager, one level per response window after the response deadline.</p>
         <label className="mt-4 flex items-center gap-2 text-sm">
           <input type="checkbox" checked={escalation.data.include_p2}
                  onChange={(e) => save(`P2 escalation ${e.target.checked ? "enabled" : "disabled"}`, () => adminApi.setEscalation(e.target.checked))} />
@@ -71,7 +71,7 @@ function ServiceRow({ service, all, save }: { service: Service; all: Service[]; 
   const names = new Map(all.map((s) => [s.id, s.name]));
   return (
     <tr className={service.is_active ? "" : "opacity-50"}>
-      <td><div className="font-medium">{service.name}</div><div className="font-mono text-xs text-slate-400">{service.code}</div></td>
+      <td><div className="font-medium">{service.name}</div><div className="mono text-faint">{service.code}</div></td>
       <td>
         {editing ? (
           <select className="input w-20" value={criticality} onChange={(e) => setCriticality(Number(e.target.value))}>
@@ -79,7 +79,7 @@ function ServiceRow({ service, all, save }: { service: Service; all: Service[]; 
           </select>
         ) : service.business_criticality}
       </td>
-      <td className="text-slate-600">{service.owner_team}</td>
+      <td className="text-muted">{service.owner_team}</td>
       <td className="max-w-sm text-xs">
         {editing ? (
           <div className="flex flex-wrap gap-1">
@@ -87,7 +87,7 @@ function ServiceRow({ service, all, save }: { service: Service; all: Service[]; 
               const on = deps.includes(s.id);
               return (
                 <button key={s.id} type="button" onClick={() => setDeps(on ? deps.filter((d) => d !== s.id) : [...deps, s.id])}
-                        className={`rounded-full border px-2 py-0.5 ${on ? "border-[var(--accent)] bg-[var(--accent-soft)]" : "border-slate-200"}`}>
+                        className={`rounded-[3px] border px-1.5 py-0.5 font-mono text-[11px] transition-colors ${on ? "border-brand bg-brand-soft text-fg" : "border-line text-muted hover:border-line-strong hover:text-fg"}`}>
                   {s.code}
                 </button>
               );
@@ -135,7 +135,7 @@ function ServicesTab() {
   return (
     <div className="space-y-6">
       <Card title="IT services">
-        <p className="mb-3 text-sm text-slate-500">Business criticality (1-4) feeds the priority formula. Dependencies drive the correlation view; cycles are rejected.</p>
+        <p className="mb-3 text-sm text-muted">Business criticality (1-4) feeds the priority formula. Dependencies drive the correlation view; cycles are rejected.</p>
         <table className="data-table">
           <thead><tr><th>Service</th><th>Criticality</th><th>Owner</th><th>Depends on</th><th /></tr></thead>
           <tbody>{services.data.map((s) => <ServiceRow key={s.id} service={s} all={services.data!} save={save} />)}</tbody>
@@ -165,7 +165,7 @@ function CategoryRow({ category, save }: { category: Category; save: ReturnType<
   const parsed = () => keywords.split(",").map((k) => k.trim()).filter(Boolean);
   return (
     <tr className={category.is_active ? "" : "opacity-50"}>
-      <td><div className="font-medium">{category.name}</div><div className="font-mono text-xs text-slate-400">{category.code}</div></td>
+      <td><div className="font-medium">{category.name}</div><div className="mono text-faint">{category.code}</div></td>
       <td><input className="input text-xs" aria-label={`${category.name} keywords`} value={keywords} onChange={(e) => setKeywords(e.target.value)} /></td>
       <td className="space-x-1 text-right whitespace-nowrap">
         <button className="btn-primary btn-sm" disabled={!changed}
@@ -194,7 +194,7 @@ function CategoriesTab() {
   return (
     <div className="space-y-6">
       <Card title="Incident categories">
-        <p className="mb-3 text-sm text-slate-500">Keywords power automatic category suggestion. Adding a category needs no code change (Open/Closed).</p>
+        <p className="mb-3 text-sm text-muted">Keywords power automatic category suggestion. Adding a category needs no code change (Open/Closed).</p>
         <table className="data-table">
           <thead><tr><th>Category</th><th>Keywords (comma separated)</th><th /></tr></thead>
           <tbody>{categories.data.map((c) => <CategoryRow key={`${c.id}-${c.keywords.join()}`} category={c} save={save} />)}</tbody>
@@ -227,14 +227,14 @@ function PolicyRow({ policy, serviceName, save }: { policy: SLAPolicy; serviceNa
     <tr>
       <td className="font-semibold">{policy.priority}</td>
       <td>{serviceName}</td>
-      <td>{num("response_minutes")}<div className="text-xs text-slate-400">{formatMinutes(draft.response_minutes)}</div></td>
-      <td>{num("resolution_minutes")}<div className="text-xs text-slate-400">{formatMinutes(draft.resolution_minutes)}</div></td>
+      <td>{num("response_minutes")}<div className="text-xs text-faint">{formatMinutes(draft.response_minutes)}</div></td>
+      <td>{num("resolution_minutes")}<div className="text-xs text-faint">{formatMinutes(draft.resolution_minutes)}</div></td>
       <td>{num("warning_threshold_pct")}</td>
       <td className="space-x-1 text-right whitespace-nowrap">
         <button className="btn-primary btn-sm" disabled={!changed}
                 onClick={() => save(`${policy.priority} policy updated`, () => adminApi.updatePolicy(policy.id, draft))}>Save</button>
         {policy.service_id !== null && (
-          <button className="btn-ghost btn-sm text-rose-600" onClick={() => save("Override deleted", () => adminApi.deletePolicy(policy.id))}>Delete</button>
+          <button className="btn-ghost btn-sm text-critical" onClick={() => save("Override deleted", () => adminApi.deletePolicy(policy.id))}>Delete</button>
         )}
       </td>
     </tr>
@@ -257,7 +257,7 @@ function SlaTab() {
   return (
     <div className="space-y-6">
       <Card title="SLA policies">
-        <p className="mb-3 text-sm text-slate-500">Default policies apply to every service; a service-specific policy overrides the default for that priority. Changes affect new incidents (existing deadlines are kept).</p>
+        <p className="mb-3 text-sm text-muted">Default policies apply to every service; a service-specific policy overrides the default for that priority. Changes affect new incidents (existing deadlines are kept).</p>
         <table className="data-table">
           <thead><tr><th>Priority</th><th>Applies to</th><th>Response (min)</th><th>Resolution (min)</th><th>Warn at %</th><th /></tr></thead>
           <tbody>
