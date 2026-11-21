@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router";
 import { authApi } from "../../api/endpoints";
 import { useAuth } from "../../auth/AuthContext";
 import { errorMessage, useToast } from "../../components/Toasts";
+import { ErrorMessage } from "../../components/ui";
 import { AuthShell } from "./Login";
 
 export function RegisterPage() {
@@ -52,7 +53,7 @@ export function RegisterPage() {
           <label className="label" htmlFor="email">Work email</label>
           <input id="email" className="input" type="email" required value={form.email} onChange={set("email")} />
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <label className="label" htmlFor="dept">Department</label>
             <input id="dept" className="input" maxLength={80} value={form.department} onChange={set("department")} />
@@ -62,7 +63,7 @@ export function RegisterPage() {
             <input id="phone" className="input" placeholder="+91 98…" value={form.phone} onChange={set("phone")} />
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <label className="label" htmlFor="pw">Password</label>
             <input id="pw" className="input" type="password" required minLength={8} autoComplete="new-password"
@@ -75,10 +76,10 @@ export function RegisterPage() {
           </div>
         </div>
         <p className="hint">At least 8 characters with a letter and a digit.</p>
-        {error && <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700" role="alert">{error}</p>}
-        <button className="btn-primary w-full" disabled={busy}>{busy ? "Creating account…" : "Create account"}</button>
+        {error && <ErrorMessage error={error} />}
+        <button className="btn-primary h-9 w-full" disabled={busy}>{busy ? "Creating account…" : "Create account"}</button>
       </form>
-      <p className="mt-4 text-sm text-slate-600">
+      <p className="mt-4 text-[13px] text-muted">
         Already registered? <Link className="link" to="/login">Sign in</Link>
       </p>
     </AuthShell>

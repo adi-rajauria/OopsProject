@@ -1,7 +1,10 @@
 import { useState, type FormEvent } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router";
 import { HOME_BY_ROLE, useAuth } from "../../auth/AuthContext";
+import { ChevronRightIcon, LogoMark } from "../../components/icons";
+import { ThemeToggle } from "../../components/ThemeToggle";
 import { errorMessage } from "../../components/Toasts";
+import { ErrorMessage } from "../../components/ui";
 
 const DEMO_ACCOUNTS = [
   { email: "riya@itsm.demo", label: "Employee", who: "Riya Kapoor · Finance" },
@@ -10,31 +13,49 @@ const DEMO_ACCOUNTS = [
 ];
 const DEMO_PASSWORD = "Demo@1234";
 
+const FACTS: [string, string][] = [
+  ["Priority", "impact × urgency × business criticality, scaled by people affected"],
+  ["SLA", "response and resolution clocks, paused while waiting on the reporter"],
+  ["Routing", "four assignment strategies, switchable at runtime"],
+  ["Audit", "every state change recorded with who, when and why"],
+];
+
 export function AuthShell({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="grid min-h-screen lg:grid-cols-2">
-      <div className="hidden flex-col justify-between bg-gradient-to-br from-indigo-700 via-indigo-600 to-violet-600 p-12 text-white lg:flex">
-        <div className="flex items-center gap-2 text-lg font-semibold">
-          <span className="grid h-9 w-9 place-items-center rounded-lg bg-white/15 font-bold">IT</span> I-ITSM
+    <div className="grid min-h-screen bg-canvas lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
+      <aside className="hidden flex-col justify-between bg-ink p-10 text-on-ink lg:flex xl:p-14">
+        <div className="flex items-center gap-2.5">
+          <LogoMark size={28} />
+          <span className="text-[15px] font-semibold tracking-tight">I-ITSM</span>
         </div>
-        <div>
-          <h1 className="text-4xl leading-tight font-semibold text-white">
-            Report, prioritise and resolve IT incidents — before SLAs slip.
-          </h1>
-          <ul className="mt-8 space-y-3 text-indigo-100">
-            <li>• Automatic priority, SLA and technician assignment</li>
-            <li>• Duplicate detection and smart category suggestions</li>
-            <li>• Live dashboards, escalations and a full audit trail</li>
-          </ul>
+        <div className="max-w-md">
+          <p className="text-[22px] leading-snug font-medium text-balance">
+            Report IT problems, route them to the right technician, and keep every deadline in view.
+          </p>
+          <dl className="mt-10 divide-y divide-white/10 border-y border-white/10">
+            {FACTS.map(([term, text]) => (
+              <div key={term} className="grid grid-cols-[88px_1fr] gap-4 py-3 text-[13px]">
+                <dt className="font-mono text-[11.5px] tracking-wide text-on-ink-muted uppercase">{term}</dt>
+                <dd className="text-on-ink/90">{text}</dd>
+              </div>
+            ))}
+          </dl>
         </div>
-        <p className="text-sm text-indigo-200">CS F213 · Intelligent IT Service Management</p>
-      </div>
-      <div className="flex items-center justify-center p-6">
-        <div className="w-full max-w-md">
+        <p className="text-[12px] text-on-ink-muted">CS F213 · Intelligent IT Service Management</p>
+      </aside>
+      <main className="flex items-start justify-center px-5 py-10 sm:items-center sm:py-12">
+        <div className="w-full max-w-sm">
+          <div className="mb-8 flex items-center gap-2.5 lg:hidden">
+            <LogoMark size={26} />
+            <span className="text-[15px] font-semibold tracking-tight">I-ITSM</span>
+          </div>
           <h1 className="mb-6">{title}</h1>
           {children}
+          <div className="mt-10 flex justify-end">
+            <ThemeToggle />
+          </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 }
@@ -78,26 +99,33 @@ export function LoginPage() {
           <input id="password" className="input" type="password" autoComplete="current-password" required
                  value={password} onChange={(e) => setPassword(e.target.value)} />
         </div>
-        {error && <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700" role="alert">{error}</p>}
-        <button className="btn-primary w-full" disabled={busy}>{busy ? "Signing in…" : "Sign in"}</button>
+        {error && <ErrorMessage error={error} />}
+        <button className="btn-primary h-9 w-full" disabled={busy}>{busy ? "Signing in…" : "Sign in"}</button>
       </form>
-      <p className="mt-4 text-sm text-slate-600">
+      <p className="mt-4 text-[13px] text-muted">
         New employee? <Link className="link" to="/register">Create an account</Link>
       </p>
 
-      <div className="mt-8 rounded-xl border border-slate-200 bg-white p-4">
-        <p className="mb-3 text-xs font-semibold tracking-wide text-slate-500 uppercase">Demo accounts</p>
-        <div className="grid gap-2">
+      <section className="panel mt-8" aria-labelledby="demo-heading">
+        <header className="flex items-baseline justify-between gap-3 border-b border-line px-4 py-2.5">
+          <h2 id="demo-heading" className="text-[13px]">Demo accounts</h2>
+          <span className="text-[12px] text-muted">password <span className="mono text-fg">{DEMO_PASSWORD}</span></span>
+        </header>
+        <ul className="divide-y divide-line">
           {DEMO_ACCOUNTS.map((a) => (
-            <button key={a.email} className="btn-secondary justify-between" disabled={busy}
-                    onClick={(e) => submit(e, { email: a.email, password: DEMO_PASSWORD })}>
-              <span className="font-semibold">{a.label}</span>
-              <span className="text-xs text-slate-500">{a.who}</span>
-            </button>
+            <li key={a.email}>
+              <button className="group flex w-full items-center justify-between gap-3 px-4 py-2.5 text-left hover:bg-sunken disabled:opacity-50"
+                      disabled={busy} onClick={(e) => submit(e, { email: a.email, password: DEMO_PASSWORD })}>
+                <span className="min-w-0">
+                  <span className="block text-[13.5px] font-medium text-fg">{a.label}</span>
+                  <span className="block truncate text-[12px] text-muted">{a.who}</span>
+                </span>
+                <ChevronRightIcon className="shrink-0 text-faint group-hover:text-brand" />
+              </button>
+            </li>
           ))}
-        </div>
-        <p className="mt-2 text-xs text-slate-500">All demo accounts use the password {DEMO_PASSWORD}.</p>
-      </div>
+        </ul>
+      </section>
     </AuthShell>
   );
 }
