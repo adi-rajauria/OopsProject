@@ -19,6 +19,7 @@ from app.intelligence.recommender import RatingSummary, TechnicianRecommender
 from app.intelligence.recurring import RecurringProblemDetector
 from app.intelligence.resolution_suggester import ResolutionSuggester
 from app.intelligence.resolution_time import ResolutionTimeEstimator
+from app.intelligence.severity_hints import SeverityAdvisor
 from app.intelligence.sla_risk import RiskLevel, SLARiskAnalyzer
 from app.intelligence.text_similarity import TfidfTextSimilarity, incident_text
 from tests.conftest import START
@@ -240,6 +241,31 @@ def test_correlation_finds_hotspot_and_upstream_cause():
     kinds = {(f.kind, f.root_service) for f in report.findings}
     assert kinds == {("HOTSPOT", "VPN"), ("UPSTREAM_CAUSE", "Network")}
     assert report.finding_for(5) is None and report.edges == [(2, 1)]
+
+
+# --- Impact / urgency hints ----------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("title", "description", "impact", "urgency"),
+    [
+        ("Checkout broken", "All customers cannot pay since 10:00", 4, 4),
+        ("Payroll export", "The whole department is blocked before the deadline", 3, 3),
+        ("Shared drive", "A few colleagues see the drive intermittently", 2, 2),
+        ("Keyboard", "Only me: a cosmetic issue on my keyboard", 1, 1),
+        ("Something is weird", "Not sure what is happening today", None, None),
+    ],
+)
+def test_severity_hints_take_the_strongest_phrase(title, description, impact, urgency):
+    hint = SeverityAdvisor().suggest(title, description)
+    assert (hint.impact, hint.urgency) == (impact, urgency)
+    assert (hint.impact_reason is None) == (impact is None) and (hint.urgency_reason is None) == (urgency is None)
+
+
+def test_severity_hint_explains_with_the_matched_phrase():
+    hint = SeverityAdvisor().suggest("Payment application unavailable", "Users are unable to complete transactions")
+    assert hint.urgency == 4 and hint.urgency_reason == 'mentions "unable to complete transactions"'
+    assert hint.impact is None  # "users" alone does not say how many
 
 
 # --- Recurring problems ------------------------------------------------------------------------

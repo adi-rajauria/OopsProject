@@ -9,6 +9,7 @@ from app.domain.users import User
 from app.intelligence.category_classifier import CategorySuggestion
 from app.intelligence.correlation import CorrelationReport
 from app.intelligence.recurring import RecurringProblem
+from app.intelligence.severity_hints import SeverityHint
 from app.intelligence.sla_risk import RiskLevel, SLARiskAssessment
 
 router = APIRouter(prefix="/api/intelligence", tags=["intelligence"])
@@ -20,6 +21,12 @@ Staff = Annotated[User, Depends(require(Permission.VIEW_ALL_INCIDENTS))]
 def suggest_category(body: TextPreview, user: Reporter, container: Container) -> list[CategorySuggestion]:
     """Live suggestion while the employee is typing the report."""
     return container.intelligence.suggest_category(body.title, body.description)
+
+
+@router.post("/suggest-severity", response_model=SeverityHint)
+def suggest_severity(body: TextPreview, user: Reporter, container: Container) -> SeverityHint:
+    """Impact / urgency hint from phrases in the report ("all users", "cannot pay"), with the phrase as the reason."""
+    return container.intelligence.suggest_severity(body.title, body.description)
 
 
 @router.post("/check-duplicates", response_model=list[LinkOut])

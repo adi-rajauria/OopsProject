@@ -173,6 +173,8 @@ def test_self_help_and_resolution_estimate_over_http(api):
     tips = client.post("/api/intelligence/self-help", headers=riya, json=text).json()
     assert tips and tips[0]["resolution"] and "incident_id" not in tips[0]  # employees never see others' ids
     assert client.post("/api/intelligence/self-help", headers=riya, json={"title": ""}).status_code == 422
+    hint = client.post("/api/intelligence/suggest-severity", headers=riya, json={"title": "All users cannot pay"}).json()
+    assert (hint["impact"], hint["urgency"]) == (4, 4) and hint["urgency_reason"] == 'mentions "cannot pay"'
 
     own = client.get("/api/incidents", headers=riya, params={"page_size": 100}).json()["items"]
     mine = own[0]["id"]

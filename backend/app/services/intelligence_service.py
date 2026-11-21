@@ -14,6 +14,7 @@ from app.intelligence.recommender import RatingSummary, Recommendation, Technici
 from app.intelligence.recurring import RecurringProblem, RecurringProblemDetector
 from app.intelligence.resolution_suggester import ResolutionSuggester, SuggestedResolution
 from app.intelligence.resolution_time import ResolutionEstimate, ResolutionTimeEstimator
+from app.intelligence.severity_hints import SeverityAdvisor, SeverityHint
 from app.intelligence.sla_risk import RiskLevel, SLARiskAnalyzer, SLARiskAssessment
 from app.intelligence.text_similarity import TextSimilarity, incident_text
 from app.services.assignment_service import AssignmentService
@@ -39,6 +40,7 @@ class IntelligenceService:
         self._duplicates = DuplicateDetector(similarity)
         self._resolutions = ResolutionSuggester(similarity)
         self._resolution_time = ResolutionTimeEstimator()
+        self._severity = SeverityAdvisor()
         self._recommender = TechnicianRecommender()
         self._risk = SLARiskAnalyzer()
         self._correlator = IncidentCorrelator()
@@ -66,6 +68,9 @@ class IntelligenceService:
             now=now,
             exclude_id=exclude_id,
         )
+
+    def suggest_severity(self, title: str, description: str) -> SeverityHint:
+        return self._severity.suggest(title, description)
 
     def self_help(self, title: str, description: str) -> list[SuggestedResolution]:
         """Fixes that worked for similar resolved incidents, shown to the reporter before they submit."""
