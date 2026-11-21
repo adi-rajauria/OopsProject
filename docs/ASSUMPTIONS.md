@@ -91,3 +91,16 @@ Every assumption made while building I-ITSM, numbered so the report can cite the
 76. The login page has one-click demo-account buttons for the recorded demo; they use the published demo password.
 77. Frontend stack verified on Node 26.13 / npm 11.20: React 19.3, React Router 8.5 (declarative mode), Vite 8.3, Tailwind 4.3, TypeScript 7.0 (native compiler), all exact-pinned with a lockfile.
 78. UI verification is a headless-browser smoke test (Playwright, outside the project) that visits every page for every role, runs one full cross-role workflow and checks phone width (390 px). There are no automated frontend unit tests: the testing budget goes to the backend, where the business rules live.
+
+## UI redesign (21 Nov 2026)
+
+79. **Supersedes 71 (accent colour part).** All roles share one brand colour (petrol). Roles stay visibly distinct through their shell (sidebar console for technicians and administrators, top-bar portal for employees), portal name, navigation and a neutral role marker. Red, amber and green carry meaning only (priority, SLA, success).
+80. Colours are semantic CSS tokens (`bg-surface`, `text-muted`, `border-line`, `bg-brand`, `text-critical` …) defined once in `src/index.css` with light and dark values; components never use raw Tailwind palette classes.
+81. Theme follows the operating system by default; a System / Light / Dark toggle (sidebar footer, employee page footer, sign-in page) stores an explicit choice in `localStorage`, applied before first paint.
+82. Fonts are IBM Plex Sans and IBM Plex Mono, self-hosted through `@fontsource` (latin subset) so the UI looks the same offline. These are the only two new dependencies.
+83. The nine incident states share five colour tones (waiting, active, pending info, resolved, closed); the state name is always shown as text.
+84. Icons are a small inline-SVG set (`components/icons.tsx`); no icon library.
+85. Wide tables keep horizontal scrolling on phones, inside their panel (the page itself never scrolls sideways).
+86. In staff incident lists the SLA badge and the next deadline share one column; "Created" is hidden below 2xl (1536 px) when deadlines are shown, because it is the least actionable column. It is always on the incident detail page.
+87. On small screens the incident detail shows the SLA clocks directly under the actions; on desktop they sit in the side rail.
+88. Redesign verification: `npm run build`, a headless Edge sweep of every page for all three roles in light and dark at 1440 / 1024 / 768 / 390 px (no console errors, no failed API calls, no horizontal page overflow), and one full cross-role workflow through the new UI.
