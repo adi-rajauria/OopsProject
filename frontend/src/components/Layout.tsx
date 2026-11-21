@@ -4,6 +4,7 @@ import { useAuth, useUser } from "../auth/AuthContext";
 import { LiveEventsProvider, useLiveEvents } from "../hooks/LiveEvents";
 import { RoleBadge } from "./badges";
 import { NotificationBell } from "./NotificationBell";
+import { ThemeToggle } from "./ThemeToggle";
 
 interface NavItem {
   to: string;
@@ -89,6 +90,7 @@ export function Layout() {
             </nav>
             <div className="ml-auto flex items-center gap-3">
               <LiveDot />
+              <ThemeToggle />
               <NotificationBell />
               <div className="hidden text-right leading-tight sm:block">
                 <div className="text-sm font-medium text-slate-800">{user.full_name}</div>
