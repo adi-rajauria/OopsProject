@@ -9,6 +9,7 @@ import { Card, ErrorMessage, PageHeader, Spinner } from "../../components/ui";
 import { useAsync, useDebounced } from "../../hooks/useAsync";
 import { IMPACT_OPTIONS, URGENCY_OPTIONS } from "../../lib/format";
 
+/** A connected 1-4 scale: reads as one question with ordered answers, not four separate cards. */
 function ScaleChooser({ name, value, onChange, options }: {
   name: string;
   value: number;
@@ -16,22 +17,24 @@ function ScaleChooser({ name, value, onChange, options }: {
   options: { value: number; label: string; hint: string }[];
 }) {
   return (
-    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4" role="radiogroup" aria-label={name}>
-      {options.map((o) => (
+    <div className="grid grid-cols-2 overflow-hidden rounded border border-line-strong sm:grid-cols-4" role="radiogroup" aria-label={name}>
+      {options.map((o, index) => (
         <button
           type="button"
           role="radio"
           aria-checked={value === o.value}
           key={o.value}
           onClick={() => onChange(o.value)}
-          className={`rounded-lg border px-3 py-2 text-left transition ${
-            value === o.value
-              ? "border-[var(--accent)] bg-[var(--accent-soft)] ring-1 ring-[var(--accent)]"
-              : "border-slate-200 bg-white hover:border-slate-300"
+          className={`relative border-line px-3 py-2 text-left transition-colors ${index % 2 ? "border-l" : ""} ${
+            index > 1 ? "border-t sm:border-t-0" : ""} ${index === 2 ? "sm:border-l" : ""} ${
+            value === o.value ? "bg-brand-soft shadow-[inset_0_-2px_0_var(--c-brand)]" : "bg-surface hover:bg-sunken"
           }`}
         >
-          <div className="text-sm font-medium text-slate-800">{o.label}</div>
-          <div className="text-xs text-slate-500">{o.hint}</div>
+          <div className="flex items-baseline gap-1.5">
+            <span className={`font-mono text-[11px] ${value === o.value ? "text-brand" : "text-faint"}`}>{o.value}</span>
+            <span className="text-[13.5px] font-medium text-fg">{o.label}</span>
+          </div>
+          <div className="text-[12px] text-muted">{o.hint}</div>
         </button>
       ))}
     </div>
@@ -110,7 +113,7 @@ export function ReportIncidentPage() {
     <>
       <PageHeader title="Report an incident" subtitle="Describe what is wrong. We will classify, prioritise and route it automatically." />
       <div className="grid gap-6 lg:grid-cols-3">
-        <form onSubmit={(e) => submit(e)} className="card card-body space-y-5 lg:col-span-2">
+        <form onSubmit={(e) => submit(e)} className="panel space-y-5 p-5 lg:col-span-2">
           <div>
             <label className="label" htmlFor="title">Short summary</label>
             <input id="title" className="input" required minLength={5} maxLength={200} value={title}
@@ -147,7 +150,7 @@ export function ReportIncidentPage() {
             </div>
           </div>
           <div>
-            <span className="label">Who is affected? (impact)</span>
+            <span className="label">Who is affected?</span>
             <ScaleChooser name="Impact" value={impact} onChange={setImpact} options={IMPACT_OPTIONS} />
           </div>
           <div>
@@ -161,13 +164,13 @@ export function ReportIncidentPage() {
           </div>
 
           {blocking && (
-            <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900" role="alert">
-              <p className="font-medium">You reported something almost identical a few minutes ago:</p>
-              <ul className="mt-2 list-disc pl-5">
+            <div className="rounded-r border-l-[3px] border-l-warning-solid bg-warning-soft p-4 text-[13px] text-fg" role="alert">
+              <p className="font-semibold">You reported something almost identical a few minutes ago:</p>
+              <ul className="mt-2 space-y-1">
                 {blocking.map((m) => (
                   <li key={m.incident_id}>
-                    <Link className="link" to={`/incidents/${m.incident_id}`}>{m.number}</Link> {m.title}
-                    {" "}({Math.round(m.similarity * 100)}% similar)
+                    <Link className="link mono" to={`/incidents/${m.incident_id}`}>{m.number}</Link> {m.title}
+                    {" "}<span className="text-muted">({Math.round(m.similarity * 100)}% similar)</span>
                   </li>
                 ))}
               </ul>
@@ -189,29 +192,29 @@ export function ReportIncidentPage() {
         <aside className="space-y-4">
           <Card title="Is it already reported?">
             {serviceId === "" || title.trim().length < 4 ? (
-              <p className="text-sm text-slate-500">Choose a service and type a summary to check for similar open incidents.</p>
+              <p className="text-[13px] text-muted">Choose a service and type a summary to check for similar open incidents.</p>
             ) : similar.length === 0 ? (
-              <p className="text-sm text-slate-500">No similar open incidents on this service in the last 24 hours.</p>
+              <p className="text-[13px] text-muted">No similar open incidents on this service in the last 24 hours.</p>
             ) : (
               <ul className="space-y-3">
                 {similar.map((m) => (
-                  <li key={m.incident_id} className="text-sm">
+                  <li key={m.incident_id} className="text-[13px]">
                     <div className="flex items-center justify-between gap-2">
-                      <Link className="link font-mono text-xs" to={`/incidents/${m.incident_id}`}>{m.number}</Link>
-                      <span className="text-xs text-slate-500">{Math.round(m.similarity * 100)}% similar</span>
+                      <Link className="link mono" to={`/incidents/${m.incident_id}`}>{m.number}</Link>
+                      <span className="font-mono text-[11.5px] text-muted">{Math.round(m.similarity * 100)}%</span>
                     </div>
-                    <p className="text-slate-800">{m.title}</p>
+                    <p className="text-fg">{m.title}</p>
                     <StatusBadge status={m.status} />
                   </li>
                 ))}
-                <li className="text-xs text-slate-500">
+                <li className="border-t border-line pt-3 text-[12px] text-muted">
                   You can still submit: your report will be linked to these so the technician sees the full picture.
                 </li>
               </ul>
             )}
           </Card>
           <Card title="What happens next">
-            <ol className="list-decimal space-y-1 pl-5 text-sm text-slate-600">
+            <ol className="space-y-2 text-[13px] text-muted [counter-reset:step] [&>li]:relative [&>li]:pl-6 [&>li]:[counter-increment:step] [&>li]:before:absolute [&>li]:before:left-0 [&>li]:before:font-mono [&>li]:before:text-[11.5px] [&>li]:before:text-faint [&>li]:before:content-[counter(step,decimal-leading-zero)]">
               <li>Priority is calculated from impact, urgency and how critical the service is.</li>
               <li>The matching SLA sets response and resolution deadlines.</li>
               <li>A suitable technician is assigned and notified.</li>

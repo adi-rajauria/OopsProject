@@ -66,7 +66,7 @@ export function IncidentTable({ incidents, columns = ["service", "technician", "
                            done={!open || i.status === "PENDING_INFO"} />
                   </td>
                 )}
-                <td className="font-mono text-[12px] whitespace-nowrap text-muted">{relativeTime(i.created_at)}</td>
+                <td className="text-[12.5px] whitespace-nowrap text-muted tabular-nums">{relativeTime(i.created_at)}</td>
               </tr>
             );
           })}
