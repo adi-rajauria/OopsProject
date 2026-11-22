@@ -55,7 +55,8 @@ Everything runs locally: no Docker, no cloud.
 
 - **Real-time dashboard** via Server-Sent Events.
 - **Service dependency graph** with hotspot and upstream-cause correlation.
-- **Voice-based incident reporting** (Web Speech API, on-device where the browser supports it).
+- **Voice input** for reporting incidents and for every free-text box on the incident page: notes, questions, answers,
+  resolutions (Web Speech API, on-device where the browser supports it).
 - **CI on GitHub Actions:** tests on SQLite and PostgreSQL 18, migration + seed, frontend build.
 
 ---

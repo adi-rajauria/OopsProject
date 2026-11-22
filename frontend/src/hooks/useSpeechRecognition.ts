@@ -62,6 +62,9 @@ async function localSupport(Recognition: RecognizerConstructor): Promise<{ lang:
   return null;
 }
 
+/** Only one microphone session at a time: starting dictation in one field stops it in any other. */
+let activeRecognizer: Recognizer | null = null;
+
 const ERRORS: Record<string, string> = {
   "not-allowed": "Microphone access was blocked. Allow it in the browser's address bar and try again.",
   "no-speech": "No speech was heard. Try again a little closer to the microphone.",
@@ -98,8 +101,10 @@ export function useSpeechRecognition(onText: (text: string) => void) {
 
   const start = useCallback(async () => {
     if (!Recognition || recognizer.current) return;
+    activeRecognizer?.stop();
     const r = new Recognition();
     recognizer.current = r;
+    activeRecognizer = r;
     setError(undefined);
     setOfflineLang(null);
     const local = await localSupport(Recognition);
@@ -125,6 +130,7 @@ export function useSpeechRecognition(onText: (text: string) => void) {
       }
     };
     r.onend = () => {
+      if (activeRecognizer === r) activeRecognizer = null;
       recognizer.current = null;
       setListening(false);
       setInterim("");
@@ -133,6 +139,7 @@ export function useSpeechRecognition(onText: (text: string) => void) {
       r.start();
       setListening(true);
     } catch {
+      if (activeRecognizer === r) activeRecognizer = null;
       recognizer.current = null;
       setError("Speech recognition could not start. Try again, or type instead.");
     }

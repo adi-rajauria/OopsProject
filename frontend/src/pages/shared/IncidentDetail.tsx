@@ -8,6 +8,7 @@ import { Stars } from "../../components/charts";
 import { ArrowLeftIcon, StarIcon } from "../../components/icons";
 import { SlaPanel } from "../../components/SlaPanel";
 import { Timeline } from "../../components/Timeline";
+import { VoiceInput } from "../../components/VoiceInput";
 import { useToast } from "../../components/Toasts";
 import { Card, ErrorMessage, Notice, Spinner } from "../../components/ui";
 import { useLiveRefresh } from "../../hooks/LiveEvents";
@@ -60,9 +61,12 @@ function TextAction({ label, placeholder, minLength, submitLabel, initial = "", 
       <label className="label">{label}</label>
       <textarea className="input min-h-24" required={minLength > 0} minLength={minLength} value={text} placeholder={placeholder}
                 onChange={(e) => setText(e.target.value)} autoFocus />
-      <div className="flex justify-end gap-2">
-        <button type="button" className="btn-secondary btn-sm" onClick={onCancel}>Cancel</button>
-        <button className="btn-primary btn-sm" disabled={busy || text.trim().length < minLength}>{submitLabel}</button>
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <VoiceInput value={text} onChange={setText} />
+        <div className="ml-auto flex gap-2">
+          <button type="button" className="btn-secondary btn-sm" onClick={onCancel}>Cancel</button>
+          <button className="btn-primary btn-sm" disabled={busy || text.trim().length < minLength}>{submitLabel}</button>
+        </div>
       </div>
     </form>
   );
@@ -102,9 +106,12 @@ function VerifyForm({ incident, mode, busy, onSubmit, onCancel }: {
         <RatingInput value={rating} onChange={setRating} />
       </div>
       <textarea className="input" placeholder="Optional comment" value={comment} maxLength={2000} onChange={(e) => setComment(e.target.value)} />
-      <div className="flex justify-end gap-2">
-        <button type="button" className="btn-secondary btn-sm" onClick={onCancel}>Cancel</button>
-        <button className="btn-primary btn-sm" disabled={busy}>{mode === "verify" ? "Confirm resolved" : "Send feedback"}</button>
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <VoiceInput value={comment} onChange={setComment} maxLength={2000} />
+        <div className="ml-auto flex gap-2">
+          <button type="button" className="btn-secondary btn-sm" onClick={onCancel}>Cancel</button>
+          <button className="btn-primary btn-sm" disabled={busy}>{mode === "verify" ? "Confirm resolved" : "Send feedback"}</button>
+        </div>
       </div>
     </form>
   );
@@ -269,6 +276,7 @@ function EditForm({ incident, busy, onSave, onCancel }: {
         <span className="label">Description</span>
         <textarea className="input min-h-24" minLength={10} value={description} onChange={(e) => setDescription(e.target.value)} />
       </label>
+      <VoiceInput value={description} onChange={setDescription} label="Dictate more" />
       <p className="hint">Changing impact, urgency or affected users recalculates the priority and SLA deadlines.</p>
       <div className="flex justify-end gap-2">
         <button type="button" className="btn-secondary btn-sm" onClick={onCancel}>Cancel</button>
@@ -322,14 +330,17 @@ function Conversation({ incident, user, refresh }: { incident: IncidentDetail; u
         }}>
           <textarea className="input min-h-20" value={body} minLength={2} maxLength={5000} required onChange={(e) => setBody(e.target.value)}
                     placeholder={isStaff(user) ? "Add an investigation note or an update for the reporter" : "Add more information for the support team"} />
-          <div className="flex items-center justify-between">
-            {isStaff(user) ? (
-              <label className="flex items-center gap-2 text-sm text-muted">
-                <input type="checkbox" checked={internal} onChange={(e) => setInternal(e.target.checked)} />
-                Internal note (hidden from the reporter)
-              </label>
-            ) : <span />}
-            <button className="btn-secondary btn-sm" disabled={busy || body.trim().length < 2}>Post</button>
+          <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+              <VoiceInput value={body} onChange={setBody} />
+              {isStaff(user) && (
+                <label className="flex items-center gap-2 text-sm text-muted">
+                  <input type="checkbox" checked={internal} onChange={(e) => setInternal(e.target.checked)} />
+                  Internal note (hidden from the reporter)
+                </label>
+              )}
+            </div>
+            <button className="btn-secondary btn-sm ml-auto" disabled={busy || body.trim().length < 2}>Post</button>
           </div>
         </form>
       )}

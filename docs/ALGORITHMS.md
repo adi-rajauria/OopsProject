@@ -14,7 +14,7 @@ Code lives in `backend/app/intelligence/` (pure Python, plus scikit-learn behind
 | 5 | Category suggestion | `intelligence/category_classifier.py` | report form, auto-fill when no category is chosen |
 | + | Service correlation (innovation) | `intelligence/correlation.py` | dependency graph view |
 | + | Suggested resolutions (spec G) | `intelligence/resolution_suggester.py` | incident page (staff); "Try this first" on the report form (self-service) |
-| + | Voice reporting (innovation) | `frontend/src/hooks/useSpeechRecognition.ts` | report form, "Speak instead"; the spoken text then feeds the category, severity, duplicate and self-help suggestions like typed text |
+| + | Voice input (innovation) | `frontend/src/hooks/useSpeechRecognition.ts`, `components/VoiceInput.tsx` | report form ("Speak instead"; the spoken text feeds the category, severity, duplicate and self-help suggestions like typed text), plus "Dictate" on the incident conversation, all action forms, the verification comment and Edit details |
 | + | Impact / urgency hints | `intelligence/severity_hints.py` | report form, under the impact and urgency scales |
 | + | Recurring problem detection | `intelligence/recurring.py` | Service health page |
 | + | Predicted resolution time | `intelligence/resolution_time.py` | incident page, Details card (everyone who can view it) |

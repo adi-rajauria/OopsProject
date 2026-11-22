@@ -6,7 +6,7 @@ import type { CategorySuggestion, IncidentLink, SelfHelpTip, SeverityHint } from
 import { StatusBadge } from "../../components/badges";
 import { errorMessage, useToast } from "../../components/Toasts";
 import { Card, ErrorMessage, PageHeader, Spinner } from "../../components/ui";
-import { MicIcon } from "../../components/icons";
+import { appendSpoken, VoiceButton, VoiceStatus } from "../../components/VoiceInput";
 import { useAsync, useDebounced } from "../../hooks/useAsync";
 import { useSpeechRecognition } from "../../hooks/useSpeechRecognition";
 import { IMPACT_OPTIONS, URGENCY_OPTIONS } from "../../lib/format";
@@ -79,9 +79,8 @@ export function ReportIncidentPage() {
   // Voice reporting: each spoken phrase is appended to the description; the first one also becomes the title.
   const addSpokenText = useCallback((spoken: string) => {
     if (!spoken) return;
-    const sentence = spoken.charAt(0).toUpperCase() + spoken.slice(1);
-    setTitle((current) => current || sentence.slice(0, 200));
-    setDescription((current) => (current.trim() ? `${current.trimEnd()} ${sentence}` : sentence).slice(0, 5000));
+    setTitle((current) => current || appendSpoken("", spoken, 200));
+    setDescription((current) => appendSpoken(current, spoken));
   }, []);
   const voice = useSpeechRecognition(addSpokenText);
   const [blocking, setBlocking] = useState<IncidentLink[] | null>(null);
@@ -156,34 +155,12 @@ export function ReportIncidentPage() {
           <div>
             <div className="flex items-end justify-between gap-2">
               <label className="label" htmlFor="desc">What happened?</label>
-              {voice.supported && (
-                <button type="button" onClick={() => (voice.listening ? voice.stop() : void voice.start())} aria-pressed={voice.listening}
-                        className={`mb-1.5 inline-flex items-center gap-1.5 rounded border px-2 py-1 text-[12.5px] ${
-                          voice.listening ? "border-critical-solid bg-critical-soft text-critical" : "border-line-strong text-muted hover:text-fg"}`}>
-                  <MicIcon size={14} />
-                  {voice.listening ? "Stop dictation" : "Speak instead"}
-                </button>
-              )}
+              <VoiceButton voice={voice} className="mb-1.5" />
             </div>
             <textarea id="desc" className="input min-h-32" required minLength={10} maxLength={5000} value={description}
                       placeholder="What were you doing, what did you expect, what error did you see?"
                       onChange={(e) => setDescription(e.target.value)} />
-            {voice.listening && (
-              <p className="hint" aria-live="polite">Listening… {voice.interim && <em className="text-fg">{voice.interim}</em>}</p>
-            )}
-            {voice.error && (
-              <p className="hint text-warning">
-                {voice.error}
-                {voice.offlineAvailable && (
-                  <>
-                    {" "}This browser can recognise speech on your computer instead.{" "}
-                    <button type="button" className="link" disabled={voice.installing} onClick={() => void voice.installOffline()}>
-                      {voice.installing ? "Downloading offline speech…" : "Download offline speech (one time)"}
-                    </button>
-                  </>
-                )}
-              </p>
-            )}
+            <VoiceStatus voice={voice} />
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
