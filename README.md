@@ -139,7 +139,8 @@ In `backend/.env`, paste that value as `ITSM_JWT_SECRET` and set `ITSM_DATABASE_
 | Frontend → <http://127.0.0.1:5173> | `.\run_frontend.ps1` | `./run_frontend.sh` |
 
 The backend script creates the virtual environment, installs the pinned requirements, runs `alembic upgrade head` and
-starts the API. The frontend script installs packages on first run and starts Vite, which forwards `/api` to the backend.
+starts the API. To install the Python packages yourself: `pip install -r requirements.txt` from the repository root
+(versions are pinned in `backend/requirements.txt`). The frontend script installs packages on first run and starts Vite, which forwards `/api` to the backend.
 
 ### 5. Load demo data
 

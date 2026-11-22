@@ -1,0 +1,4 @@
+# Python dependencies for I-ITSM (Python 3.14).
+# The pinned versions live in backend/requirements.txt, which the run scripts and CI use;
+# this file lets `pip install -r requirements.txt` work from the repository root as well.
+-r backend/requirements.txt
