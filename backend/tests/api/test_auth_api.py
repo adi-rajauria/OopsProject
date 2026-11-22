@@ -1,4 +1,4 @@
-REGISTER = {"email": "riya@corp.test", "full_name": "Riya Sharma", "password": "Secret123", "department": "Finance"}
+REGISTER = {"email": "adi@corp.test", "full_name": "Adi Rajauria", "password": "Secret123", "department": "Finance"}
 
 
 def register_and_login(client) -> str:

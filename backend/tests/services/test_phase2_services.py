@@ -234,7 +234,7 @@ def test_dashboards(searchable):
     assert overview.sla_violations == 2 and overview.avg_rating == 4 and overview.mttr_hours == pytest.approx(2.0)
 
     workload = {t.name: (t.active, t.resolved_total) for t in reports.technician_workload(world.admin)}
-    assert workload["Asha AppTech"] == (0, 1) and workload["Nikhil NetTech"] == (1, 0)
+    assert workload["Asha AppTech"] == (0, 1) and workload["Shrey Bhasker"] == (1, 0)
     services = {s.code: (s.total, s.open, s.violations) for s in reports.service_analysis(world.admin)}
     assert services == {"PAY": (1, 0, 2), "MAIL": (1, 1, 0), "WIKI": (1, 1, 0)}
     sla = reports.sla_report(world.admin)

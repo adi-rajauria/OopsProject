@@ -7,7 +7,7 @@ frontend type-check + build.
 Types: **N** normal operation · **B** boundary · **I** invalid input · **E** exception · **A** authorization · **R** business rule · **S** state transition.
 
 Fixture world (`tests/conftest.py`): services PAY (criticality 4), MAIL (3), WIKI (1); categories APPLICATION, NETWORK, DATABASE, HARDWARE;
-PDF default SLA table; Employee E1 (reporter), technicians Asha (APPLICATION, 5 yrs), Nikhil (NETWORK, 10 yrs), Dia (DATABASE + APPLICATION, 2 yrs), two administrators.
+PDF default SLA table; Employee Adi Rajauria (reporter), technicians Asha (APPLICATION, 5 yrs), Shrey Bhasker (NETWORK, 10 yrs), Dia (DATABASE + APPLICATION, 2 yrs), two administrators (Abhinandan Chandak, Mani Manager).
 Clock fixed at 2026-11-16 10:00 UTC and advanced explicitly.
 
 ## Domain unit tests (`tests/unit`)
@@ -66,7 +66,7 @@ Clock fixed at 2026-11-16 10:00 UTC and advanced explicitly.
 | TC-45 | Runtime strategy switch | employee sets LOAD; admin sets LOAD; unknown key | 403; next NETWORK incident goes to lowest-load tech (not the NETWORK tech); audited; `InvalidInputError` | A/R |
 | TC-46 | Feedback rules | before resolution; rating 6; twice | `InvalidStateTransitionError`; `InvalidInputError`; `FeedbackAlreadySubmittedError` | R/I |
 | TC-47 | Internal notes | tech adds internal + public note; employee adds internal | employee sees only the public one; employee internal note = 403 | A |
-| TC-48 | Technician workload view | two incidents | Asha 1, Nikhil 0, Dia 1 | N |
+| TC-48 | Technician workload view | two incidents | Asha 1, Shrey 0, Dia 1 | N |
 | TC-49 | Register, login, authenticate | new employee | token resolves to same user; USER_CREATED audited | N |
 | TC-50 | Weak passwords | "short1", "lettersonly", "12345678" | `InvalidInputError` | I |
 | TC-51 | Duplicate email | existing email in different case | `EmailAlreadyRegisteredError` | E |

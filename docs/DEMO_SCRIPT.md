@@ -24,7 +24,7 @@ All accounts use the password **`Demo@1234`**.
 | When | Do |
 |---|---|
 | **T − 3 min** | `cd backend` then `.\.venv\Scripts\python.exe -m scripts.seed --reset` |
-| **T − 2 min** | Sign in, one role per window (normal window, private window, second browser): **Window A** `admin@itsm.demo` (Dashboard) · **Window B** `arjun@itsm.demo` (My queue) · **Window C** `isha@itsm.demo` (My incidents) |
+| **T − 2 min** | Sign in, one role per window (normal window, private window, second browser): **Window A** `abhinandan@decerno.demo` (Dashboard) · **Window B** `arjun@decerno.demo` (My queue) · **Window C** `isha@decerno.demo` (My incidents) |
 | **T − 0** | Start recording. Start on **Window A**. |
 
 **Why the order below matters:** P1 escalations at three different levels are only visible for about 5 minutes after
@@ -164,7 +164,7 @@ comment. "Feedback is stored, and ratings feed back into technician recommendati
 
 ### Workflow 3: multiple reports → duplicates / related → correlated / escalated
 
-**[12:15] Window C: sign out, sign in as `neha@itsm.demo`, Report an incident**
+**[12:15] Window C: sign out, sign in as `neha@decerno.demo`, Report an incident**
 
 - Payments Platform, title **"Payment application unavailable"**, description *"The payment application is
   unavailable, customers cannot pay."*, impact 4, urgency 4, 200 users.
@@ -172,7 +172,7 @@ comment. "Feedback is stored, and ratings feed back into technician recommendati
 - On the incident page, **Related incidents** shows a **DUPLICATE** link: "Similarity above 0.85 is a duplicate. The
   new incident is linked to the original as its parent, so the team works on one problem."
 
-**[13:15] Sign out, sign in as `zoya@itsm.demo`, report "Payment transaction failing"**
+**[13:15] Sign out, sign in as `zoya@decerno.demo`, report "Payment transaction failing"**
 
 - Description *"Every payment transaction is failing at the last step."* Submit **without a category**.
 - The form says **"Could not suggest a category from the description; please choose one"**: "That is the

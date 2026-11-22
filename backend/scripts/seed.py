@@ -68,14 +68,14 @@ SERVICES = [
 
 # key, role, name, email local part, extra
 USERS: list[tuple[str, Role, str, str, dict]] = [
-    ("admin", Role.ADMINISTRATOR, "Ada Sharma", "admin", {"admin_level": AdminLevel.SYSTEM_ADMIN, "phone": "+91 98000 00001"}),
+    ("abhinandan", Role.ADMINISTRATOR, "Abhinandan Chandak", "abhinandan", {"admin_level": AdminLevel.SYSTEM_ADMIN, "phone": "+91 98000 00001"}),
     ("ops", Role.ADMINISTRATOR, "Omar Siddiqui", "ops", {"admin_level": AdminLevel.SYSTEM_ADMIN, "phone": "+91 98000 00002"}),
     ("manager", Role.ADMINISTRATOR, "Ravi Menon", "manager", {"admin_level": AdminLevel.IT_MANAGER, "phone": "+91 98000 00003"}),
     ("priya", Role.TECHNICIAN, "Priya Nair", "priya", {"phone": "+91 98100 00001", "profile": TechnicianProfile(
         skills=frozenset({"APPLICATION", "SOFTWARE", "DATABASE"}), experience_years=9, is_team_lead=True, team="Apps")}),
     ("arjun", Role.TECHNICIAN, "Arjun Verma", "arjun", {"phone": "+91 98100 00002", "profile": TechnicianProfile(
         skills=frozenset({"APPLICATION", "CLOUD"}), experience_years=4, team="Apps")}),
-    ("kabir", Role.TECHNICIAN, "Kabir Rao", "kabir", {"phone": "+91 98100 00003", "profile": TechnicianProfile(
+    ("shrey", Role.TECHNICIAN, "Shrey Bhasker", "shrey", {"phone": "+91 98100 00003", "profile": TechnicianProfile(
         skills=frozenset({"NETWORK", "SECURITY"}), experience_years=12, is_team_lead=True, team="Infra")}),
     ("meera", Role.TECHNICIAN, "Meera Iyer", "meera", {"phone": "+91 98100 00004", "profile": TechnicianProfile(
         skills=frozenset({"NETWORK", "HARDWARE"}), experience_years=3, team="Infra")}),
@@ -87,7 +87,7 @@ USERS: list[tuple[str, Role, str, str, dict]] = [
         skills=frozenset({"STORAGE", "CLOUD"}), experience_years=7, team="Platform")}),
     ("sana", Role.TECHNICIAN, "Sana Qureshi", "sana", {"phone": "+91 98100 00008", "profile": TechnicianProfile(
         skills=frozenset({"AUTHENTICATION", "SECURITY"}), experience_years=5, team="Identity")}),
-    ("riya", Role.EMPLOYEE, "Riya Kapoor", "riya", {"department": "Finance", "phone": "+91 99000 00001"}),
+    ("adi", Role.EMPLOYEE, "Adi Rajauria", "adi", {"department": "Finance", "phone": "+91 99000 00001"}),
     ("aman", Role.EMPLOYEE, "Aman Gupta", "aman", {"department": "Sales"}),
     ("neha", Role.EMPLOYEE, "Neha Joshi", "neha", {"department": "HR"}),
     ("vikram", Role.EMPLOYEE, "Vikram Singh", "vikram", {"department": "Operations"}),
@@ -95,7 +95,7 @@ USERS: list[tuple[str, Role, str, str, dict]] = [
     ("karan", Role.EMPLOYEE, "Karan Mehta", "karan", {"department": "Engineering"}),
     ("isha", Role.EMPLOYEE, "Isha Bose", "isha", {"department": "Customer Support"}),
 ]
-EMAIL_DOMAIN = "itsm.demo"
+EMAIL_DOMAIN = "decerno.demo"
 
 DEFAULT_SLA = {Priority.P1: (5, 30), Priority.P2: (15, 120), Priority.P3: (60, 480), Priority.P4: (240, 1440)}
 SERVICE_SLA = [("PAY", Priority.P1, 3, 20), ("PAY", Priority.P2, 10, 60), ("WIKI", Priority.P3, 120, 720)]
@@ -151,7 +151,7 @@ SCENARIOS: list[Scenario] = [
     S(290, "zoya", "EMAIL", "SOFTWARE", 1, 2, 1, "Outlook add-in will not install", "The CRM add-in for Outlook fails to install with a licence error.", "closed"),
     S(270, "karan", "DBCORE", "DATABASE", 3, 3, 40, "Reporting query deadlocks nightly", "The nightly reporting job hits a deadlock on the orders table and fails.", "closed_info"),
     S(250, "isha", "AUTH", "AUTHENTICATION", 2, 3, 8, "Users locked out after password change", "After the password change several agents are locked out and OTP never arrives.", "closed"),
-    S(240, "riya", "PAY", "APPLICATION", 3, 3, 30, "Refund page throws error on submit", "Submitting a refund on the payments portal throws an application error.", "closed", late=True),
+    S(240, "adi", "PAY", "APPLICATION", 3, 3, 30, "Refund page throws error on submit", "Submitting a refund on the payments portal throws an application error.", "closed", late=True),
     S(220, "aman", "STORAGE", "STORAGE", 2, 2, 20, "Shared drive quota full", "The sales file share is out of space and nobody can save documents.", "closed"),
     S(200, "neha", "ENDPT", "HARDWARE", 1, 1, 1, "Printer on floor 2 jams constantly", "The HP printer on floor 2 jams on every second page.", "verified"),
     S(190, "vikram", "GW", "CLOUD", 3, 3, 60, "Gateway pods restarting with OOM", "API gateway pods restart repeatedly with out-of-memory errors in the cluster.", "closed", late=True),
@@ -160,28 +160,28 @@ SCENARIOS: list[Scenario] = [
     # recurring problem: the VPN drop-outs (300 h, here, and the open one at 4 h) keep coming back
     S(150, "karan", "VPN", "NETWORK", 2, 3, 15, "VPN keeps disconnecting remote staff", "Remote staff are disconnected from the VPN every few minutes again.", "closed"),
     S(140, "isha", "EMAIL", "SECURITY", 3, 3, 25, "Phishing email impersonating CEO", "Several staff received a suspicious email asking for gift cards, apparently from the CEO.", "closed"),
-    S(120, "riya", "HR", "AUTHENTICATION", 1, 2, 1, "Cannot sign in to HR portal", "SSO login to the HR portal loops back to the sign in page.", "closed"),
+    S(120, "adi", "HR", "AUTHENTICATION", 1, 2, 1, "Cannot sign in to HR portal", "SSO login to the HR portal loops back to the sign in page.", "closed"),
     S(110, "aman", "ENDPT", None, 1, 2, 1, "External monitor not detected on docking station", "My second monitor is not detected when the laptop is on the docking station.", "verified"),
     S(96, "neha", "DBCORE", "DATABASE", 2, 2, 10, "Slow queries on employee table", "Queries on the employee table take 30 seconds since yesterday.", "closed", late=True),
     S(90, "vikram", "VPN", None, 2, 2, 6, "VPN client update fails", "The VPN client update fails on Windows laptops with an install error.", "resolved"),
     S(80, "zoya", "STORAGE", "STORAGE", 2, 3, 30, "Backup job failed for marketing bucket", "The nightly backup of the marketing storage bucket has failed three nights in a row.", "closed"),
     S(72, "karan", "GW", "CLOUD", 3, 2, 40, "API latency spikes during deploys", "API gateway latency spikes to 5 seconds during every deployment.", "reopened"),
     S(60, "isha", "AUTH", "AUTHENTICATION", 3, 3, 50, "MFA push notifications delayed", "MFA push notifications arrive several minutes late so logins time out.", "closed_info"),
-    S(50, "riya", "PAY", "APPLICATION", 3, 2, 20, "Invoice download returns blank PDF", "Downloading an invoice from the payments portal gives a blank PDF.", "verified"),
+    S(50, "adi", "PAY", "APPLICATION", 3, 2, 20, "Invoice download returns blank PDF", "Downloading an invoice from the payments portal gives a blank PDF.", "verified"),
     S(40, "aman", "EMAIL", "SOFTWARE", 1, 1, 1, "Teams calendar not syncing", "Meetings created in Teams do not show up in my Outlook calendar.", "resolved"),
     S(30, "neha", "HR", "APPLICATION", 2, 3, 40, "Payslip page crashes", "The payslip page crashes with an application error for all HR staff.", "pending"),
     S(26, "vikram", "NET", "NETWORK", 2, 2, 20, "High latency to data centre", "Latency to the data centre is above 200 ms from the operations floor.", "work", late=True),
     S(20, "zoya", "WIKI", None, 1, 1, 3, "Wiki pages load slowly", "Intranet wiki pages take ten seconds to load since this morning.", "ack"),
     S(14, "karan", "DBCORE", "DATABASE", 3, 3, 60, "Replication lag on reporting replica", "The reporting replica of the core database is lagging by 40 minutes.", "work"),
     S(10, "isha", "ENDPT", "HARDWARE", 1, 2, 1, "Keyboard keys not working", "Several keys on my laptop keyboard stopped working.", "unassigned"),
-    S(8, "riya", "EMAIL", "SECURITY", 2, 2, 4, "Suspicious login alerts on mailbox", "I received alerts about suspicious logins to my mailbox from another country.", "pending"),
+    S(8, "adi", "EMAIL", "SECURITY", 2, 2, 4, "Suspicious login alerts on mailbox", "I received alerts about suspicious logins to my mailbox from another country.", "pending"),
     S(6, "aman", "STORAGE", "STORAGE", 2, 2, 15, "File share permissions reset", "Permissions on the sales file share were reset and people cannot open folders.", "assigned"),
     S(5, "neha", "AUTH", "AUTHENTICATION", 2, 3, 25, "Password reset emails not arriving", "Password reset emails from the SSO portal are not arriving for staff.", "work"),
     S(4, "vikram", "VPN", "NETWORK", 3, 3, 80, "VPN tunnel drops for remote staff", "The VPN tunnel keeps dropping for remote workers across all regions.", "ack", late=True),
     S(3.5, "zoya", "HR", "APPLICATION", 1, 1, 1, "Profile photo upload fails", "Uploading a profile photo in the HR portal does nothing.", "assigned"),
     # --- live incident: payments outage cluster (near-duplicates + correlation) --------------
     S(1.6, "karan", "GW", "CLOUD", 4, 4, 300, "API gateway returning 502 errors", "The API gateway returns 502 Bad Gateway for a large share of requests.", "work"),
-    S(1.5, "riya", "PAY", "APPLICATION", 4, 4, 500, "Payment application unavailable", "The payment application is unavailable and users are unable to complete transactions.", "ack"),
+    S(1.5, "adi", "PAY", "APPLICATION", 4, 4, 500, "Payment application unavailable", "The payment application is unavailable and users are unable to complete transactions.", "ack"),
     S(1.4, "aman", "PAY", "APPLICATION", 4, 3, 200, "Payment transaction failing", "Payment transactions fail at checkout with an error after entering card details.", "assigned"),
     S(1.3, "isha", "PAY", None, 3, 4, 120, "Unable to make payment", "Customers report they are unable to make a payment on the portal.", "assigned"),
     S(1.2, "neha", "PAY", "APPLICATION", 4, 4, 400, "Payment application is unavailable", "The payment application is unavailable, users cannot complete transactions.", "assigned"),
@@ -190,7 +190,7 @@ SCENARIOS: list[Scenario] = [
     S(0.25, "zoya", "EMAIL", "SECURITY", 4, 4, 300, "Mail server sending spam", "Our mail server is sending thousands of spam messages, possible breach.", "assigned"),
     S(0.17, "karan", "NET", "NETWORK", 4, 4, 600, "Core switch down in data centre", "The core network switch in the data centre is down; multiple floors have no network.", "assigned"),
     S(0.08, "isha", "DBCORE", "DATABASE", 4, 4, 250, "Core database not accepting connections", "The core database cluster refuses new connections; applications report connection errors.", "assigned"),
-    S(0.03, "riya", "STORAGE", "STORAGE", 2, 2, 10, "Cannot upload files to cloud storage", "Uploads to the cloud storage bucket fail with an access denied error.", "assigned"),
+    S(0.03, "adi", "STORAGE", "STORAGE", 2, 2, 10, "Cannot upload files to cloud storage", "Uploads to the cloud storage bucket fail with an access denied error.", "assigned"),
 ]
 RATINGS = itertools.cycle([5, 4, 5, 3, 4, 5, 2, 4, 5])
 
@@ -340,7 +340,7 @@ class Seeder:
             case "verify":
                 svc.verify(incident_id, reporter, rating=next(RATINGS), comment="Thanks for the quick help.")
             case "close":
-                closer = tech if incident_id % 3 else self._users["admin"]
+                closer = tech if incident_id % 3 else self._users["abhinandan"]
                 svc.close(incident_id, closer, "Confirmed resolved with the reporter.")
             case "reopen":
                 svc.reopen(incident_id, reporter, "The problem came back after a few hours.")

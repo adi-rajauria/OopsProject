@@ -165,24 +165,24 @@ before a demo**: the payment-outage hotspot is only visible for about 30 minutes
 
 | Role | Email | Name | Notes |
 |---|---|---|---|
-| Administrator | admin@itsm.demo | Ada Sharma | System Admin |
-| Administrator | ops@itsm.demo | Omar Siddiqui | System Admin |
-| Administrator | manager@itsm.demo | Ravi Menon | IT Manager (last escalation level) |
-| Technician | priya@itsm.demo | Priya Nair | Team lead, Apps: APPLICATION, SOFTWARE, DATABASE |
-| Technician | arjun@itsm.demo | Arjun Verma | Apps: APPLICATION, CLOUD |
-| Technician | kabir@itsm.demo | Kabir Rao | Team lead, Infra: NETWORK, SECURITY |
-| Technician | meera@itsm.demo | Meera Iyer | Infra: NETWORK, HARDWARE |
-| Technician | tom@itsm.demo | Tom D'Souza | Infra: HARDWARE, SOFTWARE (no phone, so no SMS) |
-| Technician | dev@itsm.demo | Dev Malhotra | Team lead, Platform: DATABASE, STORAGE, CLOUD |
-| Technician | lina@itsm.demo | Lina Fernandes | Platform: STORAGE, CLOUD |
-| Technician | sana@itsm.demo | Sana Qureshi | Identity: AUTHENTICATION, SECURITY |
-| Employee | riya@itsm.demo | Riya Kapoor | Finance (reported the payment outage) |
-| Employee | aman@itsm.demo | Aman Gupta | Sales |
-| Employee | neha@itsm.demo | Neha Joshi | HR |
-| Employee | vikram@itsm.demo | Vikram Singh | Operations |
-| Employee | zoya@itsm.demo | Zoya Khan | Marketing |
-| Employee | karan@itsm.demo | Karan Mehta | Engineering |
-| Employee | isha@itsm.demo | Isha Bose | Customer Support |
+| Administrator | abhinandan@decerno.demo | Abhinandan Chandak | System Admin |
+| Administrator | ops@decerno.demo | Omar Siddiqui | System Admin |
+| Administrator | manager@decerno.demo | Ravi Menon | IT Manager (last escalation level) |
+| Technician | padi@decerno.demo | Priya Nair | Team lead, Apps: APPLICATION, SOFTWARE, DATABASE |
+| Technician | arjun@decerno.demo | Arjun Verma | Apps: APPLICATION, CLOUD |
+| Technician | shrey@decerno.demo | Shrey Bhasker | Team lead, Infra: NETWORK, SECURITY |
+| Technician | meera@decerno.demo | Meera Iyer | Infra: NETWORK, HARDWARE |
+| Technician | tom@decerno.demo | Tom D'Souza | Infra: HARDWARE, SOFTWARE (no phone, so no SMS) |
+| Technician | dev@decerno.demo | Dev Malhotra | Team lead, Platform: DATABASE, STORAGE, CLOUD |
+| Technician | lina@decerno.demo | Lina Fernandes | Platform: STORAGE, CLOUD |
+| Technician | sana@decerno.demo | Sana Qureshi | Identity: AUTHENTICATION, SECURITY |
+| Employee | adi@decerno.demo | Adi Rajauria | Finance (reported the payment outage) |
+| Employee | aman@decerno.demo | Aman Gupta | Sales |
+| Employee | neha@decerno.demo | Neha Joshi | HR |
+| Employee | vikram@decerno.demo | Vikram Singh | Operations |
+| Employee | zoya@decerno.demo | Zoya Khan | Marketing |
+| Employee | karan@decerno.demo | Karan Mehta | Engineering |
+| Employee | isha@decerno.demo | Isha Bose | Customer Support |
 
 ---
 

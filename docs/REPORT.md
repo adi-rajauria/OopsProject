@@ -1184,7 +1184,7 @@ Example rows:
 | INC1037 | Unable to make payment | Payments Platform | P1 | ASSIGNED |
 | — | VPN tunnel drops for remote staff (3 times in 12 days) | Corporate VPN | P2 / P3 | recurring problem |
 
-All demo accounts use the password `Demo@1234` (for example `admin@itsm.demo`, `kabir@itsm.demo`, `riya@itsm.demo`).
+All demo accounts use the password `Demo@1234` (for example `abhinandan@decerno.demo`, `shrey@decerno.demo`, `adi@decerno.demo`).
 
 ---
 

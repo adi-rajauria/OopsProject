@@ -120,7 +120,7 @@ def build_world(clock: FakeClock | None = None) -> World:
             SLAPolicy(id=None, priority=priority, response_minutes=response, resolution_minutes=resolution)
         )
 
-    world.users["employee"] = _user(uow, Role.EMPLOYEE, "emp@corp.test", "Eve Employee", phone="+91 9000000001")
+    world.users["employee"] = _user(uow, Role.EMPLOYEE, "adi@corp.test", "Adi Rajauria", phone="+91 9000000001")
     world.users["employee2"] = _user(uow, Role.EMPLOYEE, "emp2@corp.test", "Evan Employee")
     world.users["t_app"] = _user(
         uow,
@@ -133,8 +133,8 @@ def build_world(clock: FakeClock | None = None) -> World:
     world.users["t_net"] = _user(
         uow,
         Role.TECHNICIAN,
-        "net@corp.test",
-        "Nikhil NetTech",
+        "shrey@corp.test",
+        "Shrey Bhasker",
         profile=TechnicianProfile(skills=frozenset({"NETWORK"}), experience_years=10),
     )
     world.users["t_db"] = _user(
@@ -144,7 +144,7 @@ def build_world(clock: FakeClock | None = None) -> World:
         "Dia DbTech",
         profile=TechnicianProfile(skills=frozenset({"DATABASE", "APPLICATION"}), experience_years=2),
     )
-    world.users["admin"] = _user(uow, Role.ADMINISTRATOR, "admin@corp.test", "Ada Admin", phone="+91 9000000003")
+    world.users["admin"] = _user(uow, Role.ADMINISTRATOR, "abhinandan@corp.test", "Abhinandan Chandak", phone="+91 9000000003")
     world.users["manager"] = _user(
         uow, Role.ADMINISTRATOR, "manager@corp.test", "Mani Manager", admin_level=AdminLevel.IT_MANAGER
     )

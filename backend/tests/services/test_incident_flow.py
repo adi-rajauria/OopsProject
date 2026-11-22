@@ -255,7 +255,7 @@ def test_technician_workload_view(world):
     world.report()
     world.report(title="Card payments time out", category_id=world.categories["DATABASE"].id)
     load = {w.technician.full_name: w.active_incidents for w in world.container.assignment.workload()}
-    assert load == {"Asha AppTech": 1, "Nikhil NetTech": 0, "Dia DbTech": 1}
+    assert load == {"Asha AppTech": 1, "Shrey Bhasker": 0, "Dia DbTech": 1}
 
 
 def test_sla_clock_pauses_while_waiting_for_reporter(world):

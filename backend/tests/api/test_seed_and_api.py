@@ -18,7 +18,7 @@ def seeded(session_factory):
 @pytest.fixture
 def api(client, seeded):
     def login(local: str) -> dict:
-        response = client.post("/api/auth/login", json={"email": f"{local}@itsm.demo", "password": DEMO_PASSWORD})
+        response = client.post("/api/auth/login", json={"email": f"{local}@decerno.demo", "password": DEMO_PASSWORD})
         assert response.status_code == 200, response.text
         return {"Authorization": f"Bearer {response.json()['access_token']}"}
 
@@ -36,11 +36,11 @@ def test_seed_meets_the_data_requirements(seeded, session_factory):
 
 def test_employee_to_technician_flow_over_http(api):
     client, login = api
-    riya = login("riya")
-    services = {s["code"]: s["id"] for s in client.get("/api/lookups/services", headers=riya).json()}
+    adi = login("adi")
+    services = {s["code"]: s["id"] for s in client.get("/api/lookups/services", headers=adi).json()}
     created = client.post(
         "/api/incidents",
-        headers=riya,
+        headers=adi,
         json={
             "title": "Laptop screen flickers",
             "description": "My laptop screen flickers and the battery drains fast.",
@@ -55,7 +55,7 @@ def test_employee_to_technician_flow_over_http(api):
     technician = {"Meera Iyer": "meera", "Tom D'Souza": "tom"}[incident["technician"]["name"]]
     tech = login(technician)
     iid = incident["id"]
-    assert client.post(f"/api/incidents/{iid}/acknowledge", headers=riya).status_code == 403
+    assert client.post(f"/api/incidents/{iid}/acknowledge", headers=adi).status_code == 403
     assert client.post(f"/api/incidents/{iid}/acknowledge", headers=tech).json()["status"] == "ACKNOWLEDGED"
     assert client.post(f"/api/incidents/{iid}/start", headers=tech).status_code == 200
     resolved = client.post(
@@ -63,29 +63,29 @@ def test_employee_to_technician_flow_over_http(api):
     ).json()
     assert (
         resolved["status"] == "RESOLVED"
-        and "verify" in client.get(f"/api/incidents/{iid}", headers=riya).json()["available_actions"]
+        and "verify" in client.get(f"/api/incidents/{iid}", headers=adi).json()["available_actions"]
     )
-    verified = client.post(f"/api/incidents/{iid}/verify", headers=riya, json={"rating": 5}).json()
+    verified = client.post(f"/api/incidents/{iid}/verify", headers=adi, json={"rating": 5}).json()
     assert verified["feedback"]["rating"] == 5
-    trail = [a["action"] for a in client.get(f"/api/incidents/{iid}/audit", headers=riya).json()]
+    trail = [a["action"] for a in client.get(f"/api/incidents/{iid}/audit", headers=adi).json()]
     assert trail[:3] == ["CREATED", "CLASSIFIED", "PRIORITY_CALCULATED"] and trail[-2:] == ["VERIFY", "FEEDBACK"]
-    assert client.get("/api/notifications/unread-count", headers=riya).json()["count"] > 0
+    assert client.get("/api/notifications/unread-count", headers=adi).json()["count"] > 0
 
 
 @pytest.mark.parametrize(
     ("user", "path", "expected"),
     [
-        ("riya", "/api/admin/users", 403),
-        ("riya", "/api/reports/overview", 403),
-        ("riya", "/api/intelligence/sla-risk", 403),
-        ("riya", "/api/intelligence/recurring", 403),
-        ("riya", "/api/technicians/me/queue", 403),
-        ("kabir", "/api/admin/services", 403),
-        ("kabir", "/api/reports/overview", 403),
-        ("kabir", "/api/technicians/workload", 200),
-        ("kabir", "/api/intelligence/correlation", 200),
-        ("admin", "/api/reports/overview", 200),
-        ("admin", "/api/admin/audit-logs", 200),
+        ("adi", "/api/admin/users", 403),
+        ("adi", "/api/reports/overview", 403),
+        ("adi", "/api/intelligence/sla-risk", 403),
+        ("adi", "/api/intelligence/recurring", 403),
+        ("adi", "/api/technicians/me/queue", 403),
+        ("shrey", "/api/admin/services", 403),
+        ("shrey", "/api/reports/overview", 403),
+        ("shrey", "/api/technicians/workload", 200),
+        ("shrey", "/api/intelligence/correlation", 200),
+        ("abhinandan", "/api/reports/overview", 200),
+        ("abhinandan", "/api/admin/audit-logs", 200),
     ],
 )
 def test_role_guards(api, user, path, expected):
@@ -95,15 +95,15 @@ def test_role_guards(api, user, path, expected):
 
 def test_search_parameters_and_validation(api):
     client, login = api
-    admin, riya = login("admin"), login("riya")
+    admin, adi = login("abhinandan"), login("adi")
     p1 = client.get(
         "/api/incidents", headers=admin, params={"priority": "P1", "status": ["ASSIGNED", "CLASSIFIED"]}
     ).json()
     assert p1["total"] > 0 and all(i["priority"] == "P1" for i in p1["items"])
     by_number = client.get("/api/incidents", headers=admin, params={"number": "INC1001"}).json()
     assert [i["number"] for i in by_number["items"]] == ["INC1001"]
-    own = client.get("/api/incidents", headers=riya, params={"page_size": 100}).json()["items"]
-    assert own and all(i["reporter"]["name"] == "Riya Kapoor" for i in own)
+    own = client.get("/api/incidents", headers=adi, params={"page_size": 100}).json()["items"]
+    assert own and all(i["reporter"]["name"] == "Adi Rajauria" for i in own)
     assert client.get("/api/incidents", headers=admin, params={"number": "ABC"}).status_code == 422
     assert client.get("/api/incidents", headers=admin, params={"page_size": 101}).status_code == 422
     assert client.get("/api/incidents", headers=admin, params={"status": "DONE"}).status_code == 422
@@ -111,9 +111,9 @@ def test_search_parameters_and_validation(api):
 
 def test_report_errors_map_to_http_codes(api):
     client, login = api
-    riya = login("riya")
-    services = {s["code"]: s["id"] for s in client.get("/api/lookups/services", headers=riya).json()}
-    categories = {c["code"]: c["id"] for c in client.get("/api/lookups/categories", headers=riya).json()}
+    adi = login("adi")
+    services = {s["code"]: s["id"] for s in client.get("/api/lookups/services", headers=adi).json()}
+    categories = {c["code"]: c["id"] for c in client.get("/api/lookups/categories", headers=adi).json()}
     body = {
         "title": "Payroll export broken",
         "description": "The payroll export to the bank fails every time.",
@@ -122,21 +122,21 @@ def test_report_errors_map_to_http_codes(api):
         "urgency": 2,
         "category_id": categories["APPLICATION"],
     }
-    no_category = client.post("/api/incidents", headers=riya, json={**body, "category_id": None})
+    no_category = client.post("/api/incidents", headers=adi, json={**body, "category_id": None})
     assert no_category.status_code == 422 and no_category.json()["error"]["code"] == "INVALID_INCIDENT"
-    assert client.post("/api/incidents", headers=riya, json={**body, "impact": 5}).status_code == 422
-    missing = client.post("/api/incidents", headers=riya, json={**body, "service_id": 999})
+    assert client.post("/api/incidents", headers=adi, json={**body, "impact": 5}).status_code == 422
+    missing = client.post("/api/incidents", headers=adi, json={**body, "service_id": 999})
     assert missing.status_code == 404 and missing.json()["error"]["code"] == "SERVICE_NOT_FOUND"
-    assert client.post("/api/incidents", headers=riya, json=body).status_code == 201
-    duplicate = client.post("/api/incidents", headers=riya, json=body)
+    assert client.post("/api/incidents", headers=adi, json=body).status_code == 201
+    duplicate = client.post("/api/incidents", headers=adi, json=body)
     assert duplicate.status_code == 409 and duplicate.json()["error"]["code"] == "DUPLICATE_INCIDENT"
     assert duplicate.json()["error"]["details"]["matches"][0]["similarity"] >= 0.85
-    assert client.post("/api/incidents", headers=riya, json={**body, "force": True}).status_code == 201
+    assert client.post("/api/incidents", headers=adi, json={**body, "force": True}).status_code == 201
 
 
 def test_dashboards_intelligence_and_admin_over_http(api):
     client, login = api
-    admin = login("admin")
+    admin = login("abhinandan")
     overview = client.get("/api/reports/overview", headers=admin).json()
     assert overview["total"] >= 40 and overview["sla_violations"] > 0
     assert {s["code"] for s in client.get("/api/reports/services", headers=admin).json()} >= {"PAY", "NET"}
@@ -160,7 +160,7 @@ def test_dashboards_intelligence_and_admin_over_http(api):
         headers=admin,
         json={
             "role": "TECHNICIAN",
-            "email": "newtech@itsm.demo",
+            "email": "newtech@decerno.demo",
             "full_name": "New Tech",
             "password": "Secret123",
             "technician": {"skills": ["NETWORK"], "experience_years": 1},
@@ -171,30 +171,30 @@ def test_dashboards_intelligence_and_admin_over_http(api):
 
 def test_self_help_and_resolution_estimate_over_http(api):
     client, login = api
-    riya, admin = login("riya"), login("admin")
+    adi, admin = login("adi"), login("abhinandan")
     text = {"title": "VPN keeps disconnecting", "description": "Remote staff lose the VPN connection"}
-    tips = client.post("/api/intelligence/self-help", headers=riya, json=text).json()
+    tips = client.post("/api/intelligence/self-help", headers=adi, json=text).json()
     assert tips and tips[0]["resolution"] and "incident_id" not in tips[0]  # employees never see others' ids
-    assert client.post("/api/intelligence/self-help", headers=riya, json={"title": ""}).status_code == 422
-    hint = client.post("/api/intelligence/suggest-severity", headers=riya, json={"title": "All users cannot pay"}).json()
+    assert client.post("/api/intelligence/self-help", headers=adi, json={"title": ""}).status_code == 422
+    hint = client.post("/api/intelligence/suggest-severity", headers=adi, json={"title": "All users cannot pay"}).json()
     assert (hint["impact"], hint["urgency"]) == (4, 4) and hint["urgency_reason"] == 'mentions "cannot pay"'
 
-    own = client.get("/api/incidents", headers=riya, params={"page_size": 100}).json()["items"]
+    own = client.get("/api/incidents", headers=adi, params={"page_size": 100}).json()["items"]
     mine = own[0]["id"]
-    assert client.get(f"/api/incidents/{mine}/resolution-estimate", headers=riya).status_code == 200
+    assert client.get(f"/api/incidents/{mine}/resolution-estimate", headers=adi).status_code == 200
     others = client.get("/api/incidents", headers=admin, params={"page_size": 100}).json()["items"]
-    foreign = next(i["id"] for i in others if i["reporter"]["name"] != "Riya Kapoor")
-    assert client.get(f"/api/incidents/{foreign}/resolution-estimate", headers=riya).status_code == 403
+    foreign = next(i["id"] for i in others if i["reporter"]["name"] != "Adi Rajauria")
+    assert client.get(f"/api/incidents/{foreign}/resolution-estimate", headers=adi).status_code == 403
     estimates = [client.get(f"/api/incidents/{i['id']}/resolution-estimate", headers=admin).json() for i in others]
     assert any(e and e["sample_size"] >= 3 and "median of" in e["reason"] for e in estimates)
 
 
 def test_csv_exports_respect_filters_visibility_and_block_formula_injection(api):
     client, login = api
-    admin, riya = login("admin"), login("riya")
-    services = {s["code"]: s["id"] for s in client.get("/api/lookups/services", headers=riya).json()}
-    categories = {c["code"]: c["id"] for c in client.get("/api/lookups/categories", headers=riya).json()}
-    created = client.post("/api/incidents", headers=riya, json={
+    admin, adi = login("abhinandan"), login("adi")
+    services = {s["code"]: s["id"] for s in client.get("/api/lookups/services", headers=adi).json()}
+    categories = {c["code"]: c["id"] for c in client.get("/api/lookups/categories", headers=adi).json()}
+    created = client.post("/api/incidents", headers=adi, json={
         "title": "=HYPERLINK(\"http://evil.test\",\"click\")", "description": "Formula in the title of this report.",
         "service_id": services["WIKI"], "impact": 1, "urgency": 1, "category_id": categories["APPLICATION"],
     })
@@ -210,15 +210,15 @@ def test_csv_exports_respect_filters_visibility_and_block_formula_injection(api)
     total = client.get("/api/incidents", headers=admin).json()["total"]
     assert everything[0][:3] == ["Number", "Title", "Status"] and len(everything) == total + 1  # all pages, not 20
     assert all(r[3] == "P1" for r in rows(admin, priority="P1")[1:])
-    own = rows(riya)[1:]
-    assert own and all(r[7] == "Riya Kapoor" for r in own)  # employees only export their own incidents
+    own = rows(adi)[1:]
+    assert own and all(r[7] == "Adi Rajauria" for r in own)  # employees only export their own incidents
     assert any(r[1] == "'=HYPERLINK(\"http://evil.test\",\"click\")" for r in own)  # neutralised for Excel
 
     violations = client.get("/api/reports/sla/violations.csv", headers=admin)
     assert violations.status_code == 200
     violation_rows = list(csv.reader(io.StringIO(violations.content.decode("utf-8-sig"))))
     assert len(violation_rows) > 1 and violation_rows[1][7].endswith(" UTC")  # same readable timestamps
-    assert client.get("/api/reports/sla/violations.csv", headers=riya).status_code == 403
+    assert client.get("/api/reports/sla/violations.csv", headers=adi).status_code == 403
 
 
 def test_event_stream_rejects_bad_tokens(api):

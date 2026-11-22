@@ -31,10 +31,10 @@ def test_weak_passwords_are_rejected(world, password):
 
 def test_duplicate_email_is_rejected(world):
     with pytest.raises(EmailAlreadyRegisteredError):
-        world.container.auth.register_employee(email="EMP@corp.test", full_name="Dup", password="Secret123")
+        world.container.auth.register_employee(email="ADI@corp.test", full_name="Dup", password="Secret123")
 
 
-@pytest.mark.parametrize(("email", "password"), [("emp@corp.test", "wrong-pass1"), ("ghost@corp.test", "Password1")])
+@pytest.mark.parametrize(("email", "password"), [("adi@corp.test", "wrong-pass1"), ("ghost@corp.test", "Password1")])
 def test_invalid_login(world, email, password):
     with pytest.raises(InvalidCredentialsError):
         world.container.auth.login(email, password)
@@ -42,10 +42,10 @@ def test_invalid_login(world, email, password):
 
 def test_deactivated_user_cannot_log_in_or_use_old_token(world):
     auth = world.container.auth
-    token = auth.login("emp@corp.test", "Password1").access_token
+    token = auth.login("adi@corp.test", "Password1").access_token
     world.employee.deactivate()
     with pytest.raises(InvalidCredentialsError):
-        auth.login("emp@corp.test", "Password1")
+        auth.login("adi@corp.test", "Password1")
     with pytest.raises(InvalidTokenError):
         auth.authenticate(token)
 

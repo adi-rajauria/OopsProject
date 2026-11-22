@@ -7,9 +7,9 @@ import { errorMessage } from "../../components/Toasts";
 import { ErrorMessage } from "../../components/ui";
 
 const DEMO_ACCOUNTS = [
-  { email: "riya@itsm.demo", label: "Employee", who: "Riya Kapoor · Finance" },
-  { email: "kabir@itsm.demo", label: "Technician", who: "Kabir Rao · Infra team lead" },
-  { email: "admin@itsm.demo", label: "Administrator", who: "Ada Sharma · System Admin" },
+  { email: "adi@decerno.demo", label: "Employee", who: "Adi Rajauria · Finance" },
+  { email: "shrey@decerno.demo", label: "Technician", who: "Shrey Bhasker · Infra team lead" },
+  { email: "abhinandan@decerno.demo", label: "Administrator", who: "Abhinandan Chandak · System Admin" },
 ];
 const DEMO_PASSWORD = "Demo@1234";
 
