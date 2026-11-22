@@ -20,13 +20,33 @@ export class ApiError extends Error {
   }
 }
 
-const TOKEN_KEY = "itsm.token";
+const TOKEN_KEY = "decerno.token";
+
+/**
+ * The sign-in token is kept per browser tab (sessionStorage), not per browser (localStorage).
+ * With localStorage every tab shared one token, so signing in as someone else in another tab silently
+ * changed who this tab was acting as: the page still showed the old user while requests went out as the new one.
+ * Per-tab storage keeps each tab on its own account (e.g. employee, technician and admin side by side),
+ * and the token is also dropped when the tab is closed.
+ */
+let inMemory: string | null = null; // fallback when the browser blocks storage
 
 export const tokenStore = {
-  get: (): string | null => localStorage.getItem(TOKEN_KEY),
-  set: (token: string) => localStorage.setItem(TOKEN_KEY, token),
-  clear: () => localStorage.removeItem(TOKEN_KEY),
+  get: (): string | null => {
+    try { return sessionStorage.getItem(TOKEN_KEY) ?? inMemory; } catch { return inMemory; }
+  },
+  set: (token: string) => {
+    inMemory = token;
+    try { sessionStorage.setItem(TOKEN_KEY, token); } catch { /* kept in memory until reload */ }
+  },
+  clear: () => {
+    inMemory = null;
+    try { sessionStorage.removeItem(TOKEN_KEY); } catch { /* nothing to clear */ }
+  },
 };
+
+// Tokens saved by older versions were shared by every tab; remove them so they cannot leak into a new tab.
+try { localStorage.removeItem("itsm.token"); } catch { /* ignore */ }
 
 let unauthorizedHandler: () => void = () => {};
 

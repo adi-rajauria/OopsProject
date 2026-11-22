@@ -16,6 +16,7 @@ class PasswordHasher(Protocol):
 class TokenClaims:
     user_id: int
     role: str
+    email: str  # binds the token to one account, not just to a database id that can be reused (e.g. after a reseed)
 
 
 class TokenService(Protocol):

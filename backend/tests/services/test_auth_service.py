@@ -50,6 +50,29 @@ def test_deactivated_user_cannot_log_in_or_use_old_token(world):
         auth.authenticate(token)
 
 
+def test_token_does_not_carry_over_to_another_person_with_the_same_id(world):
+    """After the data is rebuilt, id 1 may be someone else with the same role: the old token must not become them."""
+    import jwt
+
+    from app.domain.users import Employee
+
+    auth = world.container.auth
+    token = auth.login("adi@corp.test", "Password1").access_token
+    old = world.employee
+    someone_else = Employee(
+        id=old.id, email="other.person@corp.test", full_name="Other Person", password_hash=old.password_hash,
+        created_at=old.created_at,
+    )
+    world.uow.users.update(someone_else)
+    with pytest.raises(InvalidTokenError):
+        auth.authenticate(token)
+
+    # Tokens issued before e-mail binding (no "email" claim) are rejected too, so the user simply signs in again.
+    legacy = jwt.encode({"sub": str(old.id), "role": "EMPLOYEE", "exp": 4102444800}, "k" * 40, algorithm="HS256")
+    with pytest.raises(InvalidTokenError):
+        JwtTokenService("k" * 40, FakeClock()).decode(legacy)
+
+
 def test_tampered_and_expired_tokens_are_rejected(world):
     clock = FakeClock()
     tokens = JwtTokenService("k" * 40, clock, expiry_minutes=60)

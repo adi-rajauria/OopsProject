@@ -14,7 +14,10 @@
 
 ## Deliberate trade-offs (documented, not hidden)
 
-- **Token in `localStorage`** (frontend): simple, but readable by injected scripts if an XSS bug existed. Mitigations:
+- **Token in `sessionStorage`, one per browser tab** (frontend): each tab keeps its own account, so an employee, a technician and an
+  administrator can be signed in side by side without one sign-in silently replacing another (with the earlier shared
+  `localStorage` token, a second sign-in in another tab made the first tab act as the new user). The token is dropped
+  when the tab closes. It is still readable by injected scripts if an XSS bug existed. Mitigations:
   React escapes output by default, no `dangerouslySetInnerHTML`, short token lifetime. Production alternative: an
   httpOnly SameSite cookie plus a CSRF token.
 - **SSE token in the query string** (`/api/stream/events?token=…`): the browser `EventSource` cannot send headers. The

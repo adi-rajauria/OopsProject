@@ -1,6 +1,6 @@
 # Test cases
 
-Run: `cd backend && .venv/bin/pytest` (108 test functions, 178 cases with parametrisation; about 20 s, mostly the seeded API tests).
+Run: `cd backend && .venv/bin/pytest` (109 test functions, 179 cases with parametrisation; about 20 s, mostly the seeded API tests).
 CI (`.github/workflows/ci.yml`, GitHub Actions) runs on every push and pull request: the whole suite on SQLite and again on
 a PostgreSQL 18 service container, plus `alembic upgrade head` and the seed script on a fresh PostgreSQL database, and the
 frontend type-check + build.
@@ -148,6 +148,7 @@ Clock fixed at 2026-11-16 10:00 UTC and advanced explicitly.
 | TC-96 | Dashboards, intelligence, admin over HTTP | reports, correlation, recurring problems, risk, strategy switch, delete default policy, check-now, create technician | data present, PAY hotspot, exactly one recurring problem (Corporate VPN x3), ROUND_ROBIN active, 422, 200, 201 with skills | N |
 | TC-106 | CSV export | admin exports everything; P1 filter; employee exports; title `=HYPERLINK(...)`; SLA violations CSV as admin and as employee | text/csv attachment with all rows (more than one page); only P1 rows; only the employee's own incidents; cell becomes `'=HYPERLINK(...)`; violations with readable "... UTC" times; 403 | N/A/R |
 | TC-107 | Decerno incident numbers (7 cases) | id 5; parse "DCN-1005", "dcn1005", " DCN- 1042 ", "1005", "DCN-1000", "INC1005", "DCN-" | DCN-1005; 5, 5, 42, 5, then None for the last three | N/B/I |
+| TC-108 | Token bound to one account | sign in, then the same id now belongs to another person; a token without the e-mail claim | `InvalidTokenError` both times (no silent switch to another account) | A/E |
 | TC-97 | Event stream authentication | bad token | 401 | A |
 | TC-98 | Background monitor pass | at seed time; 30 min later | no escalations; then new violations and escalations | R |
 | TC-101 | Self-service fixes, severity hint and resolution estimate over HTTP | employee types a VPN problem; empty title; "All users cannot pay"; estimate for own incident, for someone else's, admin over all incidents | tips with a fix and no incident id; 422; impact 4 + urgency 4 with reason `mentions "cannot pay"`; 200; 403; at least one estimate from >= 3 samples with a "median of" reason | N/I/A |

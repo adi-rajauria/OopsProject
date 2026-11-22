@@ -109,7 +109,7 @@ i-itsm/
 17. "Network failure" → `NotificationDeliveryError` (simulated provider can be configured to fail for tests/demo); delivery failure does not roll back the incident change.
 18. "Database failure" → `PersistenceError` wrapping SQLAlchemy errors in repositories, returned as HTTP 503.
 19. Search: 9 criteria — number/ID, created-from/to, status, priority, category, service, technician, SLA status, free text (ILIKE title/description). Paginated (default 20). Employees only see their own incidents.
-20. Auth: JWT access token (HS256, 60 min), no refresh token; stored in `localStorage` (simplicity vs XSS trade-off documented in SECURITY.md). CORS allows only the Vite dev origin.
+20. Auth: JWT access token (HS256, 60 min), no refresh token; stored in `localStorage` (simplicity vs XSS trade-off documented in SECURITY.md). **Superseded: now per tab in `sessionStorage`, see ASSUMPTIONS.md #20.** CORS allows only the Vite dev origin.
 21. Real-time: SSE `/api/stream/events`; token passed as query param (EventSource cannot send headers; documented). Pushes to admin/technician dashboards and the notification bell.
 22. Service dependency graph: services declare `depends_on`; correlation flags incidents whose service or upstream dependency has ≥ 3 open incidents in last 2 h as "likely common cause".
 23. Tests: domain + service tests use in-memory repositories (no DB). API tests use SQLite in-memory via the same SQLAlchemy models so `pytest` needs no setup — portable column types only (JSON, not JSONB/ARRAY). Postgres used for the real app and seed.

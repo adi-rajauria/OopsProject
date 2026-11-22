@@ -35,7 +35,7 @@ class JwtTokenService:
 
     def issue(self, user: User) -> str:
         now = self._clock.now()
-        payload = {"sub": str(user.id), "role": user.role.value, "iat": now, "exp": now + self._expiry}
+        payload = {"sub": str(user.id), "role": user.role.value, "email": user.email, "iat": now, "exp": now + self._expiry}
         return jwt.encode(payload, self._secret, algorithm=self._algorithm)
 
     def decode(self, token: str) -> TokenClaims:
@@ -45,9 +45,9 @@ class JwtTokenService:
                 token,
                 self._secret,
                 algorithms=[self._algorithm],
-                options={"require": ["exp", "sub", "role"], "verify_exp": False, "verify_iat": False},
+                options={"require": ["exp", "sub", "role", "email"], "verify_exp": False, "verify_iat": False},
             )
-            claims = TokenClaims(user_id=int(payload["sub"]), role=str(payload["role"]))
+            claims = TokenClaims(user_id=int(payload["sub"]), role=str(payload["role"]), email=str(payload["email"]))
             expires_at = float(payload["exp"])
         except (jwt.InvalidTokenError, ValueError, TypeError):
             raise InvalidTokenError("Invalid authentication token") from None

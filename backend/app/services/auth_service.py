@@ -112,7 +112,8 @@ class AuthService:
     def authenticate(self, token: str) -> User:
         claims = self._tokens.decode(token)
         user = self._uow.users.get(claims.user_id)
-        if user is None or not user.is_active or user.role.value != claims.role:
+        # The id alone is not enough: after the data is rebuilt, the same id can belong to a different person.
+        if user is None or not user.is_active or user.role.value != claims.role or user.email != claims.email:
             raise InvalidTokenError("Token no longer matches an active account")
         return user
 

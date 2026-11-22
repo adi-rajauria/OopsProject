@@ -23,7 +23,7 @@ decernō, "I decide, I settle".*
 | Design | **7** design patterns, layered architecture, the domain has no framework imports |
 | API | **73** REST operations + a Server-Sent Events stream, documented automatically (Swagger UI) |
 | Data | PostgreSQL 18, **14** tables, migrations with Alembic, a realistic seed of 43 incidents |
-| Quality | **178** automated test cases on SQLite and PostgreSQL, CI on every push, 107 documented test cases |
+| Quality | **179** automated test cases on SQLite and PostgreSQL, CI on every push, 108 documented test cases |
 | Size | backend ~7,500 lines (88 files), frontend ~5,200 lines (42 files), tests ~1,800 lines, docs ~2,300 lines |
 | Innovation | voice input, real-time dashboard, service dependency graph with root-cause hints, predictive SLA risk, CI/CD |
 
@@ -190,7 +190,7 @@ means (*decernō*, "I decide"):
 
 | ID | Quality | Requirement and how it is met |
 |---|---|---|
-| NFR-1 | **Maintainability** | Layered architecture with dependencies pointing inward; the domain has no framework imports; 178 automated tests. |
+| NFR-1 | **Maintainability** | Layered architecture with dependencies pointing inward; the domain has no framework imports; 179 automated tests. |
 | NFR-2 | **Extensibility (Open/Closed)** | A new category, assignment strategy or notification channel is one new class or one row of data, with no change elsewhere ([`OPEN_CLOSED_EXAMPLES.md`](OPEN_CLOSED_EXAMPLES.md)). |
 | NFR-3 | **Security** | JWT authentication, Argon2id passwords, role guard on every endpoint plus domain ownership rules, validated input, restricted CORS, no stack traces in errors. |
 | NFR-4 | **Reliability** | One database transaction per request (Unit of Work); a failed notification never rolls back the incident change; database errors become HTTP 503. |
@@ -1264,7 +1264,7 @@ Every error uses one envelope, with a stable machine-readable code:
 | Fonts | Domine, IBM Plex Mono (`@fontsource`, self-hosted) | 5.3 | Typeface for all text; monospace for numbers and times |
 | Routing | React Router | 8.5 | Role-based routes |
 | Browser APIs | Web Speech API, EventSource (SSE) | | Voice input, live updates |
-| Testing | pytest, httpx (FastAPI TestClient) | | 178 automated cases |
+| Testing | pytest, httpx (FastAPI TestClient) | | 179 automated cases |
 | CI | GitHub Actions | | Tests on SQLite and PostgreSQL 18, migration + seed, frontend build |
 | Version control | Git, GitHub | | Feature branches, pull requests |
 
@@ -1351,7 +1351,7 @@ The spec asks nine questions. Each answer gives the reason, not just the choice.
 
 **Advantages**
 
-- A clear, type-checked OOP domain; 178 tests that run in about 40 seconds.
+- A clear, type-checked OOP domain; 179 tests that run in about 40 seconds.
 - Automatic API documentation; automatic validation; one-line role guards.
 - Explainable intelligence with a well-known library.
 - Free, open-source, cross-platform; one command to run each side.
@@ -1364,7 +1364,7 @@ The spec asks nine questions. Each answer gives the reason, not just the choice.
 - The SLA monitor and the live-update broadcaster run **inside the API process**, so running several API processes would
   need a shared broker and a separate worker (Section 16).
 - E-mail and SMS are **simulated**.
-- The token is stored in `localStorage` and passed to the SSE stream as a query parameter (Section 13).
+- The token is stored per browser tab and passed to the SSE stream as a query parameter (Section 13).
 - Voice input needs Chrome or Edge, and a network that allows the browser's speech service unless the browser has an
   on-device model.
 
@@ -1635,7 +1635,7 @@ from the description; please choose one" appears on the Category field).
 
 | Requirement | Implementation |
 |---|---|
-| **Authentication** | JWT (HS256, PyJWT), 60-minute tokens; signature, expiry, subject and role are required; a token stops working if the account is deactivated or its role changes |
+| **Authentication** | JWT (HS256, PyJWT), 60-minute tokens; signature, expiry, subject, role and e-mail are required; a token stops working if the account is deactivated, its role changes, or its id now belongs to a different account; each browser tab keeps its own token |
 | **Password protection** | Argon2id (salted, memory-hard); 8-128 characters with at least one letter and one digit; hashes never leave the server |
 | **Role-based authorisation** | Two layers: a guard on every endpoint (`Depends(require(Permission.X))`), and domain rules on every operation (only the assignee resolves, only the reporter verifies, employees see only their own incidents, internal notes hidden from employees) |
 | **Input validation** | Pydantic at the boundary, re-validated in domain constructors (defence in depth); all SQL through bound parameters; search text escaped |
@@ -1648,7 +1648,7 @@ from the description; please choose one" appears on the Category field).
 | **Voice privacy** | On-device recognition where available; otherwise audio goes to the browser vendor's speech service, never to our server; only after the user clicks and grants microphone permission |
 
 **Documented trade-offs** (acceptable for this project, with the production alternative):
-the token is kept in `localStorage` (use an httpOnly SameSite cookie plus CSRF token in production); the SSE stream takes
+the token is kept per tab in `sessionStorage` (use an httpOnly SameSite cookie plus CSRF token in production); the SSE stream takes
 the token as a query parameter because `EventSource` cannot send headers (use a short-lived stream ticket); there are no
 refresh tokens or login rate limiting (add per-IP and per-account limits and lockout).
 
@@ -1664,7 +1664,7 @@ refresh tokens or login rate limiting (add per-IP and per-account limits and loc
 | Service | `tests/services` | Use cases end to end with in-memory repositories and a controllable clock | none |
 | API / integration | `tests/api` | HTTP routes, role guards, error mapping, SQL repositories, the seed script, CSV export | SQLite in memory, **and** PostgreSQL 18 |
 
-- **178 test cases** (108 test functions, some parametrised), about 40 seconds.
+- **179 test cases** (109 test functions, some parametrised), about 40 seconds.
 - A **fixed, controllable clock** makes every time-based rule (SLA warnings, breaches, escalation levels) testable at
   exact boundaries.
 - **GitHub Actions CI** runs the suite on SQLite and on a PostgreSQL 18 container, runs the migrations and the seed on a
@@ -1705,6 +1705,7 @@ The full table of **106 documented test cases** (ID, description, input, expecte
 | TC-94 | Role guards over HTTP (11 cases) | each role × admin, reports, intelligence, queue | 403 or 200 exactly as designed | Authorization |
 | TC-106 | CSV export | admin, P1 filter, employee; title `=HYPERLINK(...)` | all rows; only P1; only own; cell escaped as text | Normal / security |
 | TC-107 | Decerno incident numbers | "DCN-1005", "dcn1005", "1005", "INC1005", "DCN-" | 5, 5, 5, then rejected | Normal / invalid input |
+| TC-108 | A token never switches to another account | same id now belongs to someone else; old-format token | rejected, sign in again | Authorization |
 
 
 ### 14.2 Bugs found and fixed during development
@@ -1738,7 +1739,7 @@ form asks the reporter to choose one (the invalid-incident exception case, handl
 
 | Job | Steps |
 |---|---|
-| Backend (SQLite) | install pinned requirements, run all 178 tests on an in-memory database |
+| Backend (SQLite) | install pinned requirements, run all 179 tests on an in-memory database |
 | Backend (PostgreSQL 18) | start a PostgreSQL container, run the migrations and the seed on a fresh database, run all tests against `itsm_test` |
 | Frontend | `npm ci`, type-check, production build |
 
@@ -1759,7 +1760,7 @@ form asks the reporter to choose one (the invalid-incident exception case, handl
 |---|---|
 | Static typing | Every Python function is type-annotated; the frontend is strict TypeScript; API types mirror the backend schemas |
 | Domain first | Business rules were written and unit-tested before any route or page used them |
-| Tests with every change | New behaviour came with tests (178 cases now); bugs got a test that reproduced them first |
+| Tests with every change | New behaviour came with tests (179 cases now); bugs got a test that reproduced them first |
 | Migrations | Every schema change is an Alembic migration; CI runs them on a fresh PostgreSQL database |
 | Realistic data | The seed replays two weeks of history through the real services, so demo data obeys every rule |
 | Documentation | Plan, assumptions (99, numbered), algorithms, ER design, security, setup, test cases, Open/Closed examples, this report and the demo script, all in `docs/` |
@@ -1794,7 +1795,7 @@ ready for the following steps, which change infrastructure classes but not the d
 | Global use | Latency | Containerise (Docker), deploy to Kubernetes or a managed platform, CDN for the frontend | Deployment only |
 
 Because every one of these sits behind an existing interface (`UnitOfWork`, `NotificationChannel`, `TextSimilarity`,
-`EventObserver`), the business rules and their 178 tests stay unchanged. This is the practical payoff of the
+`EventObserver`), the business rules and their 179 tests stay unchanged. This is the practical payoff of the
 object-oriented design.
 
 Other planned improvements: real e-mail / SMS providers, business-hours SLA calendars, OAuth single sign-on, login rate
@@ -1810,7 +1811,7 @@ limiting, refresh tokens in httpOnly cookies, and a knowledge base built from re
 | Single process (SLA monitor and live updates inside the API) | Running several API processes would duplicate the monitor and split live updates | Separate worker with a database lock, Redis pub/sub (Section 16) |
 | SLA clocks run 24 × 7 | No business hours or holidays | A calendar per SLA policy |
 | Thresholds (similarity 0.18 / 0.85, risk levels) were calibrated on our own data | May need tuning for another organisation | Make them settings; recalibrate on real history |
-| Token in `localStorage`, SSE token in the query string | Exposed if an XSS bug existed; may appear in server logs | httpOnly cookie, single-use stream ticket |
+| Token in `sessionStorage`, SSE token in the query string | Exposed if an XSS bug existed; may appear in server logs | httpOnly cookie, single-use stream ticket |
 | No login rate limiting or refresh tokens | Sign in again after 60 minutes; brute force slowed only by Argon2 | Rate limiting, lockout, refresh tokens |
 | Voice input depends on the browser | Chrome / Edge only; may need the vendor's speech service | An on-premise speech-to-text service behind the same hook |
 | Seed data is relative to "now" | Some demo views (hotspot, escalation levels) fade within minutes to an hour | Reseed shortly before a demo |
@@ -1840,7 +1841,7 @@ features, seven design patterns, real-time dashboards, a service dependency grap
 The main lesson is the one the project set out to show: **object-oriented design makes change cheap.** Switching the
 assignment strategy at runtime, adding a category without code, pausing the SLA clock, adding rating-aware
 recommendations and recurring-problem detection late in the project were all local changes, because each concern
-lives behind its own abstraction. The 178 tests, which stayed green through those changes, are the evidence.
+lives behind its own abstraction. The 179 tests, which stayed green through those changes, are the evidence.
 
 ---
 
@@ -1867,7 +1868,7 @@ lives behind its own abstraction. The 178 tests, which stayed green through thos
 | All 12 exception cases | ✅ | Section 12 |
 | Security minimum | ✅ | Section 13 |
 | ≥ 2 design patterns | ✅ 7 | Section 5.2 |
-| ≥ 15 test cases | ✅ 107 documented, 178 automated | Section 14 |
+| ≥ 15 test cases | ✅ 108 documented, 179 automated | Section 14 |
 | Architecture, use case, class diagrams | ✅ | Sections 3-4 |
 | Technology selection: 9 questions | ✅ | Section 10 |
 | ER diagram, schema, relationships, sample data | ✅ | Section 11 |

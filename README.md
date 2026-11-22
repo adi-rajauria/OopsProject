@@ -102,7 +102,7 @@ Open/Closed examples (new category, strategy or channel with no changes elsewher
 | Intelligence | scikit-learn (TF-IDF + cosine similarity), rule-based scoring |
 | Database | PostgreSQL 18 (tests: SQLite in memory, or PostgreSQL) |
 | Frontend | React 19, TypeScript, Vite, Tailwind CSS v4, React Router |
-| Tests / CI | pytest (178 cases), GitHub Actions |
+| Tests / CI | pytest (179 cases), GitHub Actions |
 
 ---
 
@@ -192,7 +192,7 @@ before a demo**: the payment-outage hotspot is only visible for about 30 minutes
 
 ```bash
 cd backend
-.venv\Scripts\python -m pytest          # Windows: 178 cases on SQLite in memory, no setup needed
+.venv\Scripts\python -m pytest          # Windows: 179 cases on SQLite in memory, no setup needed
 .venv/bin/pytest                        # macOS / Linux
 ```
 
@@ -244,7 +244,7 @@ docs/                  design and project documentation
 - Single-process by design: the SLA monitor and the live-update broadcaster run inside the API process (see the
   scalability notes in the report).
 - E-mail and SMS are simulated; real providers would plug in behind the existing adapters.
-- The JWT is stored in `localStorage`, and the SSE stream takes it as a query parameter (trade-offs documented in
+- The JWT is stored per browser tab (`sessionStorage`), and the SSE stream takes it as a query parameter (trade-offs documented in
   `docs/SECURITY.md`).
 - Voice input needs Chrome or Edge, and a network that allows the browser's speech service unless the browser has an
   on-device model.
