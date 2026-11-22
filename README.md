@@ -205,6 +205,8 @@ The test-case table (ID, description, input, expected, type) is in [`docs/TEST_C
 
 | Document | Contents |
 |---|---|
+| [`docs/REPORT.md`](docs/REPORT.md) | **Project report**: analysis, requirements, architecture, UML, technology selection, database, testing |
+| [`docs/DEMO_SCRIPT.md`](docs/DEMO_SCRIPT.md) | Demo video script: the three workflows, timings, who says what |
 | [`docs/PLAN.md`](docs/PLAN.md) | Approved plan, repository layout, data model |
 | [`docs/ALGORITHMS.md`](docs/ALGORITHMS.md) | Every intelligent feature: formula, rationale, calibration |
 | [`docs/ER.md`](docs/ER.md) | Database design (Mermaid ER diagram) and relationships |
