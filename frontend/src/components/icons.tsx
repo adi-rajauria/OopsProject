@@ -99,9 +99,10 @@ export function LogoMark({ size = 24, className = "" }: { size?: number; classNa
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden className={className}>
       {/* Decerno mark: a "D" (decide) holding a tick (settled). */}
-      <rect width="32" height="32" rx="6" fill="var(--c-brand)" />
-      <path d="M9.5 8h6.5a8 8 0 0 1 0 16H9.5Z" stroke="var(--c-on-brand)" strokeWidth="2.6" fill="none" strokeLinejoin="round" />
-      <path d="M12.8 16.3l2.6 2.6 4.6-5" stroke="var(--c-on-brand)" strokeWidth="2.6" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      {/* Fixed colours (not theme tokens) so the mark looks the same in light and dark mode. */}
+      <rect width="32" height="32" rx="6" fill="#3b33a6" />
+      <path d="M9.5 8h6.5a8 8 0 0 1 0 16H9.5Z" stroke="#ffffff" strokeWidth="2.6" fill="none" strokeLinejoin="round" />
+      <path d="M12.8 16.3l2.6 2.6 4.6-5" stroke="#f0c04a" strokeWidth="2.6" fill="none" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
