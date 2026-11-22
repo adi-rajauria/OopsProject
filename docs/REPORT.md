@@ -8,7 +8,7 @@ decernō, "I decide, I settle".*
 | | |
 |---|---|
 | Group | **[Group No.]** |
-| Members | **[Member 1 name, ID]**, **[Member 2 name, ID]**, **[Member 3 name, ID]** |
+| Members | **Abhinandan Chandak** [ID], **Adi Rajauria** [ID], **Shrey Bhasker** [ID] |
 | Repository | <https://github.com/adi-rajauria/OopsProject> |
 | Demo video | `[Group No.]_OOP_S1_2025-2026_Project` |
 | Date | 22 November 2026 |
@@ -1821,11 +1821,13 @@ limiting, refresh tokens in httpOnly cookies, and a knowledge base built from re
 
 | Member | Primary responsibility | Also contributed to |
 |---|---|---|
-| **[Member 1 name]** | **[e.g. Frontend, UI/UX, role interfaces, voice input]** | [ ] |
-| **[Member 2 name]** | **[e.g. Domain model, OOP design patterns, backend services and APIs]** | [ ] |
-| **[Member 3 name]** | **[e.g. Database, intelligent features, testing and CI]** | [ ] |
+| **Abhinandan Chandak** | **[e.g. Frontend, UI/UX, role interfaces, voice input]** | [ ] |
+| **Adi Rajauria** | **[e.g. Domain model, OOP design patterns, backend services and APIs]** | [ ] |
+| **Shrey Bhasker** | **[e.g. Database, intelligent features, testing and CI]** | [ ] |
 
-Every member understands the overall system; each explains their module in the demo video.
+Every member understands the overall system; each explains their module in the demo video: Abhinandan presents the
+overview and the live dashboards, Adi presents Workflows 1 and 2, and Shrey presents Workflow 3, administration and
+the technical depth (patterns, API, tests).
 
 ---
 
