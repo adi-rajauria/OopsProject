@@ -100,8 +100,8 @@ def test_search_parameters_and_validation(api):
         "/api/incidents", headers=admin, params={"priority": "P1", "status": ["ASSIGNED", "CLASSIFIED"]}
     ).json()
     assert p1["total"] > 0 and all(i["priority"] == "P1" for i in p1["items"])
-    by_number = client.get("/api/incidents", headers=admin, params={"number": "INC1001"}).json()
-    assert [i["number"] for i in by_number["items"]] == ["INC1001"]
+    by_number = client.get("/api/incidents", headers=admin, params={"number": "DCN-1001"}).json()
+    assert [i["number"] for i in by_number["items"]] == ["DCN-1001"]
     own = client.get("/api/incidents", headers=adi, params={"page_size": 100}).json()["items"]
     assert own and all(i["reporter"]["name"] == "Adi Rajauria" for i in own)
     assert client.get("/api/incidents", headers=admin, params={"number": "ABC"}).status_code == 422

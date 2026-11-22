@@ -79,7 +79,7 @@ i-itsm/
 | `service_dependencies` | service_id → depends_on_service_id |
 | `categories` | id, code, name, keywords (JSON), is_active |
 | `sla_policies` | id, priority, service_id (nullable = default), response_minutes, resolution_minutes, warning_threshold_pct; unique (priority, service_id) |
-| `incidents` | id, number (INC1001…), title, description, reporter_id, category_id, suggested_category_id, service_id, impact, urgency, affected_users, priority, priority_score, status, assigned_technician_id, response_due_at, resolution_due_at, acknowledged_at, resolved_at, verified_at, closed_at, resolution_summary, closure_notes, sla_status, escalation_level, parent_incident_id, created_at, updated_at |
+| `incidents` | id, number (DCN-1001…), title, description, reporter_id, category_id, suggested_category_id, service_id, impact, urgency, affected_users, priority, priority_score, status, assigned_technician_id, response_due_at, resolution_due_at, acknowledged_at, resolved_at, verified_at, closed_at, resolution_summary, closure_notes, sla_status, escalation_level, parent_incident_id, created_at, updated_at |
 | `incident_comments` | id, incident_id, author_id, kind (NOTE/INFO_REQUEST/INFO_REPLY/COMMENT), body, is_internal, created_at |
 | `incident_links` | incident_id, related_incident_id, similarity, link_type (DUPLICATE/RELATED) |
 | `audit_records` | id, incident_id (nullable), actor_id (nullable = SYSTEM), action, previous_state, new_state, description, created_at |

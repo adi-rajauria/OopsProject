@@ -35,6 +35,7 @@ TITLE_LIMITS = (5, 200)
 DESCRIPTION_LIMITS = (10, 5000)
 MAX_AFFECTED_USERS = 100_000
 UNVERIFIED_CLOSE_AFTER = timedelta(hours=72)
+NUMBER_PREFIX = "DCN"  # incident numbers look like DCN-1001 (Decerno)
 
 
 @dataclass
@@ -168,15 +169,16 @@ class Incident:
 
     @property
     def number(self) -> str:
-        return self.number_for(self._id) if self._id is not None else "INC-NEW"
+        return self.number_for(self._id) if self._id is not None else f"{NUMBER_PREFIX}-NEW"
 
     @staticmethod
     def number_for(incident_id: int) -> str:
-        return f"INC{1000 + incident_id}"
+        return f"{NUMBER_PREFIX}-{1000 + incident_id}"
 
     @staticmethod
     def id_from_number(number: str) -> int | None:
-        digits = number.strip().upper().removeprefix("INC")
+        """Accepts "DCN-1005", "dcn1005" or "1005"."""
+        digits = number.strip().upper().removeprefix(NUMBER_PREFIX).lstrip("- ")
         return int(digits) - 1000 if digits.isdigit() and int(digits) > 1000 else None
 
     @property

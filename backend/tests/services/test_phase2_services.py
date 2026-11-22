@@ -63,7 +63,7 @@ def test_similar_reports_from_other_people_are_linked_not_blocked(world):
     assert other.status is IncidentStatus.ASSIGNED
     [link] = world.uow.links.list_for(first.id)
     assert link.link_type is LinkType.RELATED and link.other(first.id) == other.id
-    assert "related to INC1001" in world.uow.audit.list_recent(action="RELATED_DETECTED")[0].description
+    assert "related to DCN-1001" in world.uow.audit.list_recent(action="RELATED_DETECTED")[0].description
 
 
 def test_missing_category_is_suggested_or_rejected(world):
@@ -139,7 +139,7 @@ def test_acknowledged_or_p2_incidents_do_not_escalate_unless_configured(world):
 
 @pytest.fixture
 def searchable(world):
-    pay = world.report()  # INC1001 P1 APPLICATION PAY, t_app
+    pay = world.report()  # DCN-1001 P1 APPLICATION PAY, t_app
     world.clock.advance(hours=1)
     mail = world.report(
         world.users["employee2"],
@@ -150,7 +150,7 @@ def searchable(world):
         urgency=1,
         affected_users=1,
         category_id=world.categories["NETWORK"].id,
-    )  # INC1002 P3 NETWORK t_net
+    )  # DCN-1002 P3 NETWORK t_net
     world.clock.advance(hours=1)
     for key in ("t_app", "t_net", "t_db"):
         world.tech(key).set_availability(False)
@@ -161,7 +161,7 @@ def searchable(world):
         impact=1,
         urgency=1,
         category_id=world.categories["DATABASE"].id,
-    )  # INC1003 unassigned P4
+    )  # DCN-1003 unassigned P4
     world.container.incidents.acknowledge(pay.id, world.tech("t_app"))
     return world, pay, mail, wiki
 
@@ -348,7 +348,7 @@ def test_realtime_push_happens_only_after_commit():
     forwarder = RealtimeForwarder(uow, broadcaster)
     ref = IncidentRef(
         id=1,
-        number="INC1001",
+        number="DCN-1001",
         title="t",
         reporter_id=10,
         assignee_id=20,
@@ -364,7 +364,7 @@ def test_realtime_push_happens_only_after_commit():
     forwarder.handle(IncidentUpdated(occurred_at=START, changed_fields=("title",), incident=ref))
     uow.commit()
     [(message, audience)] = broadcaster.messages
-    assert message["number"] == "INC1001" and audience == {10, 20}
+    assert message["number"] == "DCN-1001" and audience == {10, 20}
 
 
 def test_broadcaster_delivers_to_staff_and_involved_users_only():

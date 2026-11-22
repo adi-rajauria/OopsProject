@@ -21,7 +21,7 @@ function AuditTable() {
   const incidentId = /^\D*(\d+)$/.exec(incident)?.[1];
   const records = useAsync(() => adminApi.auditLogs({
     limit: PAGE, offset, action: action || null,
-    // "INC1005" / "1005" are incident numbers; small numbers are treated as raw ids
+    // "DCN-1005" / "1005" are incident numbers; small numbers are treated as raw ids
     incident_id: incidentId ? (Number(incidentId) > 1000 ? Number(incidentId) - 1000 : Number(incidentId)) : null,
   }), [offset, action, incident]);
 
@@ -43,7 +43,7 @@ function AuditTable() {
           <option value="">All actions</option>
           {ACTIONS.map((a) => <option key={a} value={a}>{titleCase(a)}</option>)}
         </select>
-        <input className="input w-36" placeholder="INC1001" aria-label="Incident" value={draft} onChange={(e) => setDraft(e.target.value)} />
+        <input className="input w-36" placeholder="DCN-1001" aria-label="Incident" value={draft} onChange={(e) => setDraft(e.target.value)} />
         <button className="btn-secondary btn-sm">Filter</button>
       </form>
     }>

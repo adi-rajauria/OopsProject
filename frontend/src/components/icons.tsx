@@ -98,9 +98,10 @@ export const StarIcon = ({ filled = false, ...p }: IconProps & { filled?: boolea
 export function LogoMark({ size = 24, className = "" }: { size?: number; className?: string }) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden className={className}>
+      {/* Decerno mark: a "D" (decide) holding a tick (settled). */}
       <rect width="32" height="32" rx="6" fill="var(--c-brand)" />
-      <path d="M16 7.5a8.5 8.5 0 1 1-8.5 8.5" stroke="var(--c-on-brand)" strokeWidth="3" fill="none" strokeLinecap="round" />
-      <circle cx="16" cy="16" r="2.6" fill="var(--c-on-brand)" />
+      <path d="M9.5 8h6.5a8 8 0 0 1 0 16H9.5Z" stroke="var(--c-on-brand)" strokeWidth="2.6" fill="none" strokeLinejoin="round" />
+      <path d="M12.8 16.3l2.6 2.6 4.6-5" stroke="var(--c-on-brand)" strokeWidth="2.6" fill="none" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

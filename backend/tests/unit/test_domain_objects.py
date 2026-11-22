@@ -21,6 +21,17 @@ def make(role, **extra):
     )
 
 
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [("DCN-1005", 5), ("dcn1005", 5), (" DCN- 1042 ", 42), ("1005", 5), ("DCN-1000", None), ("INC1005", None), ("DCN-", None)],
+)
+def test_incident_numbers_use_the_decerno_prefix(text, expected):
+    from app.domain.incident import Incident
+
+    assert Incident.number_for(5) == "DCN-1005"
+    assert Incident.id_from_number(text) == expected
+
+
 def test_user_factory_builds_the_right_subclass_and_normalises_email():
     assert isinstance(make(Role.EMPLOYEE), Employee)
     assert isinstance(make(Role.TECHNICIAN), Technician)

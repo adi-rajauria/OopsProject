@@ -53,7 +53,7 @@ def _parse_number(number: str | None) -> int | None:
     value = number.strip()
     incident_id = int(value) - 1000 if value.isdigit() and int(value) > 1000 else Incident.id_from_number(value)
     if incident_id is None:
-        raise InvalidInputError("Incident number must look like INC1001", details={"field": "number"})
+        raise InvalidInputError("Incident number must look like DCN-1001", details={"field": "number"})
     return incident_id
 
 

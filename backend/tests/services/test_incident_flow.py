@@ -37,7 +37,7 @@ def work_to_resolved(world, incident):
 def test_report_classifies_prioritises_applies_sla_and_assigns(world):
     incident = world.report()
 
-    assert incident.number == "INC1001"
+    assert incident.number == "DCN-1001"
     assert incident.status is IncidentStatus.ASSIGNED
     assert incident.priority is Priority.P1 and incident.priority_score == 64
     assert incident.sla.response_due_at == START + timedelta(minutes=5)
@@ -46,7 +46,7 @@ def test_report_classifies_prioritises_applies_sla_and_assigns(world):
 
     trail = world.uow.audit.trail_for(incident.id)
     assert trail.actions() == ["CREATED", "CLASSIFIED", "PRIORITY_CALCULATED", "ASSIGNED"]
-    assert [r.description for r in trail][0] == "INC1001 created by Employee E1: Payment application unavailable"
+    assert [r.description for r in trail][0] == "DCN-1001 created by Employee E1: Payment application unavailable"
 
     tech_msgs = notifications_for(world, world.tech("t_app"))
     assert {c for t, c in tech_msgs if t is NotificationType.INCIDENT_ASSIGNED} == {

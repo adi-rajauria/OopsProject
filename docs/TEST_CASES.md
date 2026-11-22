@@ -51,7 +51,7 @@ Clock fixed at 2026-11-16 10:00 UTC and advanced explicitly.
 
 | ID | Description | Input | Expected | Type |
 |---|---|---|---|---|
-| TC-33 | Report payment outage | PAY, I=4, U=4, 50 users, APPLICATION | INC1001, P1 (64), deadlines +5/+30 min, assigned to Asha; audit CREATED, CLASSIFIED, PRIORITY_CALCULATED, ASSIGNED; tech gets in-app+email+SMS | N |
+| TC-33 | Report payment outage | PAY, I=4, U=4, 50 users, APPLICATION | DCN-1001, P1 (64), deadlines +5/+30 min, assigned to Asha; audit CREATED, CLASSIFIED, PRIORITY_CALCULATED, ASSIGNED; tech gets in-app+email+SMS | N |
 | TC-34 | Complete lifecycle | ack, start, note, request info, reply, resolve, verify(4 stars), close | CLOSED; 10 audited state changes in order; feedback stored; reporter notified of info request, resolution, closure | N/S |
 | TC-35 | Role and ownership rules | employee acknowledges; non-assignee acknowledges; other employee views; technician assigns; unknown id | 403 x4 (`UnauthorizedOperationError`), `IncidentNotFoundError` | A/E |
 | TC-36 | Illegal transition via service | resolve an ASSIGNED incident | `InvalidStateTransitionError` | S/E |
@@ -124,7 +124,7 @@ Clock fixed at 2026-11-16 10:00 UTC and advanced explicitly.
 | ID | Description | Input | Expected | Type |
 |---|---|---|---|---|
 | TC-79 | Same-reporter duplicate blocked unless forced | same report twice in 5 min; then force | `DuplicateIncidentError` with matching number; forced one created, DUPLICATE link + parent | E/R |
-| TC-80 | Other people's similar reports are linked, not blocked | second user reports "Payment transaction failing" | created and assigned, RELATED link, audit "related to INC1001" | R |
+| TC-80 | Other people's similar reports are linked, not blocked | second user reports "Payment transaction failing" | created and assigned, RELATED link, audit "related to DCN-1001" | R |
 | TC-81 | Missing category | VPN text without category; vague text without category | NETWORK auto-chosen and audited "auto-suggested"; `InvalidIncidentError` | R/I |
 | TC-82 | Full escalation chain | unacked P1, monitor at due, due+1 s, +15 min | 0, 1, then 3 escalations; level 4; recipients technician, team lead, sys admin, IT manager | R/B |
 | TC-83 | No escalation for acknowledged / P2 by default | acked P1 and P2 after 2 h; technician enables P2; admin enables P2 | 0; 403; P2 escalates 4 levels, acked P1 stays 0 | R/A |
@@ -147,6 +147,7 @@ Clock fixed at 2026-11-16 10:00 UTC and advanced explicitly.
 | TC-95 | Search parameters and HTTP error mapping | multi-value filters, number, own scope, number "ABC", page size 101, status "DONE"; impact 5, unknown service, no category, duplicate, force | filtered results; 422 x3; 422, 404 `SERVICE_NOT_FOUND`, 422 `INVALID_INCIDENT`, 409 `DUPLICATE_INCIDENT` with similarity >= 0.85, 201 | I/E |
 | TC-96 | Dashboards, intelligence, admin over HTTP | reports, correlation, recurring problems, risk, strategy switch, delete default policy, check-now, create technician | data present, PAY hotspot, exactly one recurring problem (Corporate VPN x3), ROUND_ROBIN active, 422, 200, 201 with skills | N |
 | TC-106 | CSV export | admin exports everything; P1 filter; employee exports; title `=HYPERLINK(...)`; SLA violations CSV as admin and as employee | text/csv attachment with all rows (more than one page); only P1 rows; only the employee's own incidents; cell becomes `'=HYPERLINK(...)`; violations with readable "... UTC" times; 403 | N/A/R |
+| TC-107 | Decerno incident numbers (7 cases) | id 5; parse "DCN-1005", "dcn1005", " DCN- 1042 ", "1005", "DCN-1000", "INC1005", "DCN-" | DCN-1005; 5, 5, 42, 5, then None for the last three | N/B/I |
 | TC-97 | Event stream authentication | bad token | 401 | A |
 | TC-98 | Background monitor pass | at seed time; 30 min later | no escalations; then new violations and escalations | R |
 | TC-101 | Self-service fixes, severity hint and resolution estimate over HTTP | employee types a VPN problem; empty title; "All users cannot pay"; estimate for own incident, for someone else's, admin over all incidents | tips with a fix and no incident id; 422; impact 4 + urgency 4 with reason `mentions "cannot pay"`; 200; 403; at least one estimate from >= 3 samples with a "median of" reason | N/I/A |

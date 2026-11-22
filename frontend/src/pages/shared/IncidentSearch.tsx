@@ -99,7 +99,7 @@ export function IncidentSearchPage() {
           <form className="space-y-4" onSubmit={submitText}>
             <div>
               <label className="label" htmlFor="number">Incident ID</label>
-              <input id="number" className="input" placeholder="INC1001" value={draft.number}
+              <input id="number" className="input" placeholder="DCN-1001" value={draft.number}
                      onChange={(e) => setDraft({ ...draft, number: e.target.value })} />
             </div>
             <div>

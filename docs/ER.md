@@ -71,7 +71,7 @@ erDiagram
         int warning_threshold_pct
     }
     incidents {
-        int id PK "number = INC + 1000 + id"
+        int id PK "number = DCN- + 1000 + id"
         string title
         text description
         int reporter_id FK

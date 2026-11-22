@@ -1133,7 +1133,7 @@ The full column list (including the SLA snapshot and pause columns) is in [`docs
 | `service_dependencies` | Directed dependency graph | (`service_id`, `depends_on_service_id`) |
 | `categories` | Incident categories | `code` unique, `keywords` (JSON) drive suggestions |
 | `sla_policies` | Targets per priority, optionally per service | unique (`priority`, `service_id`); `service_id` null = default |
-| `incidents` | The incident aggregate, including its SLA clock | number = INC + (1000 + id); SLA targets snapshotted; `sla_status` denormalised for filtering |
+| `incidents` | The incident aggregate, including its SLA clock | number = DCN- + (1000 + id), e.g. DCN-1035; SLA targets snapshotted; `sla_status` denormalised for filtering |
 | `incident_comments` | Notes, info requests, replies | `kind`, `is_internal` |
 | `incident_links` | Duplicate / related pairs | `similarity`, `link_type` |
 | `audit_records` | Append-only history | `action`, `previous_state`, `new_state`, `description`, actor |
@@ -1179,9 +1179,9 @@ Example rows:
 
 | Number | Title | Service | Priority | Status |
 |---|---|---|---|---|
-| INC1035 | Payment application unavailable | Payments Platform | P1 | IN_PROGRESS |
-| INC1036 | Payment transaction failing | Payments Platform | P1 | ASSIGNED |
-| INC1037 | Unable to make payment | Payments Platform | P1 | ASSIGNED |
+| DCN-1035 | Payment application unavailable | Payments Platform | P1 | IN_PROGRESS |
+| DCN-1036 | Payment transaction failing | Payments Platform | P1 | ASSIGNED |
+| DCN-1037 | Unable to make payment | Payments Platform | P1 | ASSIGNED |
 | — | VPN tunnel drops for remote staff (3 times in 12 days) | Corporate VPN | P2 / P3 | recurring problem |
 
 All demo accounts use the password `Demo@1234` (for example `abhinandan@decerno.demo`, `shrey@decerno.demo`, `adi@decerno.demo`).

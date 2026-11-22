@@ -84,7 +84,7 @@ export const URGENCY_OPTIONS = [
 ];
 
 /** Mirrors Incident.number_for() in the backend. */
-export const incidentNumber = (id: number) => `INC${1000 + id}`;
+export const incidentNumber = (id: number) => `DCN-${1000 + id}`;
 
 export const OPEN_STATUSES: IncidentStatus[] = [
   "NEW",

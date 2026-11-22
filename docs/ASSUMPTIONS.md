@@ -38,7 +38,7 @@ Every assumption made while building Decerno, numbered so the report can cite th
 29. **Repo layout**: the plan's `i-itsm/` folder is this repository's root (`backend/`, `docs/`, run scripts at top level).
 30. **Library pins**: SQLAlchemy resolved to 2.1.8 (same typed 2.0-style API). Starlette 1.10 deprecates `httpx` for `TestClient`, so `httpx2` is pinned instead. `email-validator`/`EmailStr` dropped because it rejects reserved demo domains (`.test`, `.local`); email format is validated once in the domain.
 31. **AuditTrail ownership (deviation from the original plan wording)**: `Incident` composes `IncidentSLA`, its `IncidentState` and its `Comment`s. `AuditTrail` is an append-only collection keyed by incident id, written only by the `AuditLogger` observer and returned by `IncidentService.audit_trail()`. Reason: single responsibility; the Incident cannot forget or fake an audit entry, and audit also covers non-incident events (user created, setting changed).
-32. Incident number is derived (`INC` + 1000 + id), not stored; "INC1005" is parsed back to id 5 for search.
+32. Incident number is derived (`DCN-` + 1000 + id, the Decerno prefix), not stored; "DCN-1005" is parsed back to id 5 for search.
 33. In Phase 1 a category is required when reporting; Phase 2 adds automatic category suggestion when it is omitted.
 34. Visibility: employees see only incidents they reported; technicians and administrators see all. Internal notes are visible to staff only.
 35. Only the **assigned technician** may acknowledge, start work, request info and resolve. Administrators do not do technician work; they (re)assign. A VERIFIED incident may be closed by the assignee or an administrator.
@@ -67,7 +67,7 @@ Every assumption made while building Decerno, numbered so the report can cite th
 55. Dashboards are computed in Python from the repositories. This is fine at demo scale; the report's scalability section explains moving them to SQL aggregates.
 56. MTTR = mean(resolved_at - created_at) in hours over resolved incidents (paused time included). SLA compliance per priority = resolution target met / incidents whose resolution target is settled (resolved or already breached).
 57. Search: the in-memory repository evaluates SLA status live; the SQL repository filters on the denormalised `sla_status` column, refreshed on every save and every monitor pass (at most about 60 s stale).
-58. Search by number accepts "INC1005" or "1005"; free text is a case-insensitive substring match on title + description (wildcards escaped).
+58. Search by number accepts "DCN-1005", "DCN1005" or "1005"; free text is a case-insensitive substring match on title + description (wildcards escaped).
 59. Technicians (staff) may view correlation, SLA risk, workload, recommendations and suggested resolutions; overview/service/SLA/trend reports and all `/api/admin` endpoints are administrator-only.
 60. Technicians can toggle their own availability; administrators can change any technician profile.
 61. Default (service-less) SLA policies cannot be deleted, only edited, so every priority always has an SLA; service overrides can be deleted.
