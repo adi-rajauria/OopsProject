@@ -1,6 +1,9 @@
-# I-ITSM: Intelligent IT Service Management & Incident Resolution System
+# Decerno: Intelligent IT Service Management & Incident Resolution System
 
 **Project report: CS F213 Object-Oriented Programming, Semester I 2026-2027**
+
+*Decerno is our implementation of the I-ITSM system described in the project specification. The name is Latin:
+decernō, "I decide, I settle".*
 
 | | |
 |---|---|
@@ -58,7 +61,7 @@ typical symptoms, and each of them has a concrete cause:
 
 ### 1.2 Stakeholders
 
-| Stakeholder | Interest | How I-ITSM serves them |
+| Stakeholder | Interest | How Decerno serves them |
 |---|---|---|
 | **Employees / customers** | Get their problem fixed quickly and know what is happening | Simple report form (typed or spoken), live status, a timeline, fixes to try first, notifications |
 | **Technicians / support engineers** | A clear queue, the information they need, no busywork | Personal queue sorted by deadline, internal notes, "request info" that pauses the SLA, suggested fixes from history |
@@ -77,7 +80,9 @@ typical symptoms, and each of them has a concrete cause:
 
 ### 1.4 Proposed solution
 
-I-ITSM is a full-stack web application that manages the complete lifecycle
+**Decerno** (Latin *decernō*, "I decide, I settle") is a full-stack web application. The name reflects what it does:
+it **decides** priority, the applicable SLA, the technician and when to escalate, and it helps **settle** (resolve)
+every incident. It manages the complete lifecycle
 **Report → Classify → Prioritise → Assign → Investigate → Resolve → Verify → Close**, with:
 
 - a **rule-based, documented priority formula** (impact × urgency × business criticality × affected-users factor);
@@ -179,7 +184,7 @@ All 99 assumptions are numbered in [`docs/ASSUMPTIONS.md`](ASSUMPTIONS.md). The 
 
 ### 3.1 Overview
 
-I-ITSM is a **layered (clean / hexagonal) architecture**: a React single-page application talks to a FastAPI backend
+Decerno is a **layered (clean / hexagonal) architecture**: a React single-page application talks to a FastAPI backend
 over HTTP/JSON, plus a Server-Sent Events stream for live updates. Inside the backend, dependencies point
 **inward**: the API depends on the services, the services depend on the domain, and the persistence layer *implements*
 interfaces that the domain defines. The domain depends on nothing.
@@ -303,7 +308,7 @@ flowchart LR
     Adm(["👤 Administrator<br/>System Admin / IT Manager"])
     Sys(["⚙ SLA Monitor<br/>timer, every 60 s"])
 
-    subgraph ITSM["I-ITSM (system boundary)"]
+    subgraph ITSM["Decerno (system boundary)"]
         direction TB
         subgraph G0["Common"]
             direction TB
@@ -786,7 +791,7 @@ a new strategy is one new class, with no change to the service, the API or the U
 
 ## 6. Intelligent features
 
-The spec asks for at least two. I-ITSM has thirteen, all rule-based or classic information retrieval, and all
+The spec asks for at least two. Decerno has thirteen, all rule-based or classic information retrieval, and all
 **explainable**: every result carries the reason it was produced. Formulas, thresholds and their calibration are in
 [`docs/ALGORITHMS.md`](ALGORITHMS.md).
 
@@ -1337,7 +1342,7 @@ Every member understands the overall system; each explains their module in the d
 
 ## 15. Conclusion
 
-I-ITSM covers the complete incident lifecycle the spec describes, and every MVP requirement, user role, search
+Decerno covers the complete incident lifecycle the spec describes, and every MVP requirement, user role, search
 criterion, exception case and security point (Appendix A). Beyond the minimum, it has thirteen explainable intelligent
 features, seven design patterns, real-time dashboards, a service dependency graph, voice input and CI on two databases.
 

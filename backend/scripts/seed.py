@@ -397,7 +397,7 @@ def has_data(session_factory: sessionmaker[Session]) -> bool:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Seed I-ITSM with demo data")
+    parser = argparse.ArgumentParser(description="Seed Decerno with demo data")
     parser.add_argument("--reset", action="store_true", help="delete ALL existing data first")
     args = parser.parse_args()
     logging.basicConfig(level=logging.WARNING)

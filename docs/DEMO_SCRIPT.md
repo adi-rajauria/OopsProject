@@ -39,8 +39,9 @@ dashboard comes first.
 
 **[0:00] Window A, Operations dashboard**
 
-> "Hello, I am **[Member 1]**, and I worked on **[module, e.g. the frontend and the role interfaces]**. This is I-ITSM,
-> our Intelligent IT Service Management system. It manages the full incident lifecycle: report, classify, prioritise,
+> "Hello, I am **[Member 1]**, and I worked on **[module, e.g. the frontend and the role interfaces]**. This is
+> **Decerno** (say *deh-CHAIR-no*), our Intelligent IT Service Management system. The name is Latin for 'I decide, I
+> settle', because the system decides priority, deadlines and who handles each incident, and helps settle it. It manages the full incident lifecycle: report, classify, prioritise,
 > assign, investigate, resolve, verify and close. It is a React and TypeScript frontend on a Python FastAPI backend with
 > PostgreSQL, built around a pure object-oriented domain model. Each role gets its own interface: this is the
 > administrator's."
@@ -221,7 +222,7 @@ takes about 20 seconds.)
 
 **[18:20] Close**
 
-> "To sum up: I-ITSM covers every MVP requirement, adds thirteen explainable intelligent features, real-time
+> "To sum up: Decerno covers every MVP requirement, adds thirteen explainable intelligent features, real-time
 > dashboards, a dependency graph and voice reporting, and the object-oriented design kept all of it easy to change.
 > Thank you."
 

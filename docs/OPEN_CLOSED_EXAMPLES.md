@@ -1,4 +1,4 @@
-# Open/Closed in I-ITSM
+# Open/Closed in Decerno
 
 *Open for extension, closed for modification.* Each extension below means **adding** code or data; no existing
 class has to change. Each one is backed by a test.

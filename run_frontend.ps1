@@ -1,4 +1,4 @@
-# Start the I-ITSM web UI (Windows PowerShell). Usage: .\run_frontend.ps1   (backend must be running on :8000)
+# Start the Decerno web UI (Windows PowerShell). Usage: .\run_frontend.ps1   (backend must be running on :8000)
 $ErrorActionPreference = "Stop"
 Set-Location (Join-Path $PSScriptRoot "frontend")
 if (-not (Test-Path "node_modules")) {

@@ -41,7 +41,7 @@ class EmailChannel(NotificationChannel):
             self._provider.send_mail(
                 from_addr=self._provider.sender,
                 to_addrs=[recipient.email],
-                subject=f"[I-ITSM] {notification.title}",
+                subject=f"[Decerno] {notification.title}",
                 body_text=notification.body,
             )
         except (ConnectionError, OSError) as exc:

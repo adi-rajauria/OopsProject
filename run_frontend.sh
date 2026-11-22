@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Start the I-ITSM web UI (macOS / Linux). Usage: ./run_frontend.sh   (backend must be running on :8000)
+# Start the Decerno web UI (macOS / Linux). Usage: ./run_frontend.sh   (backend must be running on :8000)
 set -euo pipefail
 cd "$(dirname "$0")/frontend"
 if [ ! -d node_modules ]; then

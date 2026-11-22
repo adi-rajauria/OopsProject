@@ -1,4 +1,4 @@
-# Start the I-ITSM API (Windows PowerShell). Usage: .\run_backend.ps1
+# Start the Decerno API (Windows PowerShell). Usage: .\run_backend.ps1
 $ErrorActionPreference = "Stop"
 Set-Location (Join-Path $PSScriptRoot "backend")
 

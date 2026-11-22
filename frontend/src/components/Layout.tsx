@@ -94,10 +94,10 @@ function LiveDot() {
 
 function Wordmark({ role }: { role: Role }) {
   return (
-    <Link to="/" className="flex items-center gap-2.5" aria-label="I-ITSM home">
+    <Link to="/" className="flex items-center gap-2.5" aria-label="Decerno home">
       <LogoMark size={26} />
       <span className="leading-tight">
-        <span className="block text-[14px] font-semibold tracking-tight text-fg">I-ITSM</span>
+        <span className="block text-[14px] font-semibold tracking-tight text-fg">Decerno</span>
         <span className="block text-[11.5px] text-muted">{PORTAL_NAME[role]}</span>
       </span>
     </Link>

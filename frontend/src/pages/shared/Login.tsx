@@ -13,41 +13,46 @@ const DEMO_ACCOUNTS = [
 ];
 const DEMO_PASSWORD = "Demo@1234";
 
-const FACTS: [string, string][] = [
-  ["Priority", "impact × urgency × business criticality, scaled by people affected"],
-  ["SLA", "response and resolution clocks, paused while waiting on the reporter"],
-  ["Routing", "four assignment strategies, switchable at runtime"],
-  ["Audit", "every state change recorded with who, when and why"],
-];
-
 export function AuthShell({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="grid min-h-screen bg-canvas lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
-      <aside className="hidden flex-col justify-between bg-ink p-10 text-on-ink lg:flex xl:p-14">
+      <aside className="hidden flex-col border-r border-line bg-ink p-10 text-on-ink lg:flex xl:p-14">
         <div className="flex items-center gap-2.5">
           <LogoMark size={28} />
-          <span className="text-[15px] font-semibold tracking-tight">I-ITSM</span>
+          <span className="text-[15px] font-semibold tracking-tight">Decerno</span>
         </div>
-        <div className="max-w-md">
-          <p className="text-[22px] leading-snug font-medium text-balance">
-            Report IT problems, route them to the right technician, and keep every deadline in view.
-          </p>
-          <dl className="mt-10 divide-y divide-white/10 border-y border-white/10">
-            {FACTS.map(([term, text]) => (
-              <div key={term} className="grid grid-cols-[88px_1fr] gap-4 py-3 text-[13px]">
-                <dt className="font-mono text-[11.5px] tracking-wide text-on-ink-muted uppercase">{term}</dt>
-                <dd className="text-on-ink/90">{text}</dd>
-              </div>
-            ))}
-          </dl>
+
+        <div className="flex flex-1 flex-col justify-center py-12">
+          <div className="max-w-md">
+            <p className="font-mono text-[11px] tracking-[0.16em] text-on-ink-muted uppercase">
+              Intelligent IT Service Management
+            </p>
+            <p className="mt-4 text-[34px] leading-[1.15] font-semibold tracking-tight text-balance">
+              Every incident, decided and resolved.
+            </p>
+            <p className="mt-5 text-[15px] leading-relaxed text-on-ink/80 text-pretty">
+              Report IT problems, route them to the right technician, and keep every deadline in view.
+            </p>
+            <div className="mt-10 border-l-2 border-white/20 pl-4">
+              <p className="text-[14px]">
+                <span className="font-semibold italic">dēcernō</span>
+                <span className="text-on-ink-muted"> · Latin, verb</span>
+              </p>
+              <p className="mt-1 text-[13px] text-on-ink-muted">to decide, to settle, to resolve</p>
+            </div>
+          </div>
         </div>
-        <p className="text-[12px] text-on-ink-muted">CS F213 · Intelligent IT Service Management</p>
+
+        <p className="text-[12px] text-on-ink-muted">CS F213 · Object-Oriented Programming</p>
       </aside>
       <main className="flex items-start justify-center px-5 py-10 sm:items-center sm:py-12">
         <div className="w-full max-w-sm">
-          <div className="mb-8 flex items-center gap-2.5 lg:hidden">
-            <LogoMark size={26} />
-            <span className="text-[15px] font-semibold tracking-tight">I-ITSM</span>
+          <div className="mb-8 lg:hidden">
+            <div className="flex items-center gap-2.5">
+              <LogoMark size={26} />
+              <span className="text-[15px] font-semibold tracking-tight">Decerno</span>
+            </div>
+            <p className="mt-2 text-[13px] text-muted">Every incident, decided and resolved.</p>
           </div>
           <h1 className="mb-6">{title}</h1>
           {children}

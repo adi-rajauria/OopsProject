@@ -1,4 +1,4 @@
-# I-ITSM — Phase 0 Plan (approved)
+# Decerno — Phase 0 Plan (approved)
 
 Spec: `OOPs_Project.pdf` (CS F213/MAC F212, Sem I 2026-27). Rubric (120): Functionality 60, Technical depth 15, UX 10, Innovation 10, Docs+Demo 10, Design/Architecture 10, Testing 5.
 

@@ -1,6 +1,6 @@
 # Cumulative assumptions
 
-Every assumption made while building I-ITSM, numbered so the report can cite them. Updated every phase.
+Every assumption made while building Decerno, numbered so the report can cite them. Updated every phase.
 
 ## Phase 0 (plan)
 

@@ -66,7 +66,7 @@ def create_app(
     logging.basicConfig(level=settings.log_level, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
     app = FastAPI(
-        title="I-ITSM API",
+        title="Decerno API",
         version="1.0.0",
         lifespan=lifespan,
         description="Intelligent IT Service Management & Incident Resolution System",

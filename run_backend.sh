@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Start the I-ITSM API (macOS / Linux). Usage: ./run_backend.sh
+# Start the Decerno API (macOS / Linux). Usage: ./run_backend.sh
 set -euo pipefail
 cd "$(dirname "$0")/backend"
 

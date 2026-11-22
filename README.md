@@ -1,10 +1,11 @@
-# I-ITSM: Intelligent IT Service Management & Incident Resolution System
+# Decerno: Intelligent IT Service Management & Incident Resolution System
 
 [![CI](https://github.com/adi-rajauria/OopsProject/actions/workflows/ci.yml/badge.svg)](https://github.com/adi-rajauria/OopsProject/actions/workflows/ci.yml)
 
-A web application for the full incident lifecycle (**report → classify → prioritise → assign → investigate → resolve →
-verify → close**), with SLA monitoring, notifications, a complete audit trail, dashboards and eight explainable
-intelligent features. Built for CS F213 (Object-Oriented Programming) to show how OOP design keeps a real system
+**Decerno** (Latin *decernō*, "I decide, I settle") is our implementation of the I-ITSM system from the CS F213
+project specification: a web application for the full incident lifecycle (**report → classify → prioritise → assign →
+investigate → resolve → verify → close**), with SLA monitoring, notifications, a complete audit trail, dashboards and
+thirteen explainable intelligent features. Built for CS F213 (Object-Oriented Programming) to show how OOP design keeps a real system
 maintainable and extensible.
 
 Everything runs locally: no Docker, no cloud.
