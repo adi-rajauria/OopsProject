@@ -17,9 +17,9 @@ export function AuthShell({ title, children }: { title: string; children: React.
   return (
     <div className="grid min-h-screen bg-canvas lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
       <aside className="hidden flex-col border-r border-line bg-ink p-10 text-on-ink lg:flex xl:p-14">
-        <div className="flex items-center gap-2.5">
-          <LogoMark size={28} />
-          <span className="text-[15px] font-semibold tracking-tight">Decerno</span>
+        <div className="flex items-center gap-3">
+          <LogoMark size={40} />
+          <span className="text-[24px] font-bold tracking-tight">Decerno</span>
         </div>
 
         <div className="flex flex-1 flex-col justify-center py-12">
@@ -48,9 +48,9 @@ export function AuthShell({ title, children }: { title: string; children: React.
       <main className="flex items-start justify-center px-5 py-10 sm:items-center sm:py-12">
         <div className="w-full max-w-sm">
           <div className="mb-8 lg:hidden">
-            <div className="flex items-center gap-2.5">
-              <LogoMark size={26} />
-              <span className="text-[15px] font-semibold tracking-tight">Decerno</span>
+            <div className="flex items-center gap-3">
+              <LogoMark size={34} />
+              <span className="text-[21px] font-bold tracking-tight">Decerno</span>
             </div>
             <p className="mt-2 text-[13px] text-muted">Every incident, decided and resolved.</p>
           </div>

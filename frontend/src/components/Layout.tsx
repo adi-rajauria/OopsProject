@@ -94,10 +94,10 @@ function LiveDot() {
 
 function Wordmark({ role }: { role: Role }) {
   return (
-    <Link to="/" className="flex items-center gap-2.5" aria-label="Decerno home">
-      <LogoMark size={26} />
+    <Link to="/" className="flex items-center gap-3" aria-label="Decerno home">
+      <LogoMark size={34} />
       <span className="leading-tight">
-        <span className="block text-[14px] font-semibold tracking-tight text-fg">Decerno</span>
+        <span className="block text-[19px] font-bold tracking-tight text-fg">Decerno</span>
         <span className="block text-[11.5px] text-muted">{PORTAL_NAME[role]}</span>
       </span>
     </Link>
@@ -141,9 +141,9 @@ function SidebarNav({ groups }: { groups: NavGroup[] }) {
 function SidebarFooter({ user, onLogout }: { user: User; onLogout: () => void }) {
   return (
     <div className="space-y-3 border-t border-line px-4 py-3">
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 leading-tight">
-          <div className="truncate text-[13px] font-medium text-fg">{user.full_name}</div>
+          <div className="text-[13px] font-medium break-words text-fg">{user.full_name}</div>
           <div className="mt-1"><RoleBadge role={user.role} /></div>
         </div>
         <button className="btn-ghost btn-sm" onClick={onLogout} title="Sign out">
