@@ -5,6 +5,7 @@ import { useUser } from "../../auth/AuthContext";
 import { RoleBadge } from "../../components/badges";
 import { useToast } from "../../components/Toasts";
 import { Card, ErrorMessage, PageHeader, Spinner } from "../../components/ui";
+import { PlusIcon } from "../../components/icons";
 import { useAsync } from "../../hooks/useAsync";
 import { formatDateTime } from "../../lib/format";
 
@@ -16,7 +17,7 @@ function SkillPicker({ categories, value, onChange }: { categories: Category[]; 
         return (
           <button type="button" key={c.code} aria-pressed={on}
                   onClick={() => onChange(on ? value.filter((v) => v !== c.code) : [...value, c.code])}
-                  className={`rounded-full border px-2.5 py-0.5 text-xs ${on ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-strong)]" : "border-slate-200 text-slate-600"}`}>
+                  className={`rounded-[3px] border px-2 py-0.5 text-[12px] transition-colors ${on ? "border-brand bg-brand-soft text-fg" : "border-line text-muted hover:border-line-strong hover:text-fg"}`}>
             {c.name}
           </button>
         );
@@ -95,7 +96,7 @@ function CreateUserForm({ categories, onCreated }: { categories: Category[]; onC
         </label>
       )}
       {form.role === "TECHNICIAN" && (
-        <div className="space-y-3 rounded-lg bg-slate-50 p-3">
+        <div className="space-y-3 rounded bg-sunken p-3">
           <div><span className="label">Skills (incident categories)</span>
             <SkillPicker categories={categories} value={form.skills} onChange={(v) => set("skills", v)} />
           </div>
@@ -134,7 +135,7 @@ function TechnicianEditor({ user, categories, onSaved, onCancel }: { user: User;
     }
   };
   return (
-    <div className="space-y-3 rounded-lg bg-slate-50 p-3">
+    <div className="space-y-3 rounded bg-sunken p-3">
       <SkillPicker categories={categories} value={draft.skills} onChange={(skills) => setDraft({ ...draft, skills })} />
       <div className="flex flex-wrap items-end gap-3 text-sm">
         <label><span className="label">Experience</span>
@@ -177,14 +178,14 @@ export function UsersPage() {
   return (
     <>
       <PageHeader title="Users & technicians" subtitle="Self-registration creates employees; technicians and administrators are created here."
-                  actions={<button className="btn-primary" onClick={() => setShowCreate((s) => !s)}>{showCreate ? "Close" : "+ New user"}</button>} />
+                  actions={<button className="btn-primary" onClick={() => setShowCreate((s) => !s)}>{showCreate ? "Close" : <><PlusIcon size={14} />New user</>}</button>} />
       {showCreate && categories.data && (
         <Card title="New user" className="mb-6">
           <CreateUserForm categories={categories.data} onCreated={() => { setShowCreate(false); users.reload(); }} />
         </Card>
       )}
       <Card title={
-        <select className="input w-auto" aria-label="Filter by role" value={role} onChange={(e) => setRole(e.target.value as Role | "")}>
+        <select className="input h-7 w-auto py-0 text-[13px]" aria-label="Filter by role" value={role} onChange={(e) => setRole(e.target.value as Role | "")}>
           <option value="">All roles</option>
           <option value="EMPLOYEE">Employees</option>
           <option value="TECHNICIAN">Technicians</option>
@@ -200,14 +201,14 @@ export function UsersPage() {
                 {users.data.map((u) => (
                   <tr key={u.id} className={u.is_active ? "" : "opacity-50"}>
                     <td>
-                      <div className="font-medium text-slate-800">{u.full_name} <span className="text-xs text-slate-400">{u.code}</span></div>
-                      <div className="text-xs text-slate-500">{u.email}{u.phone ? ` · ${u.phone}` : ""}</div>
+                      <div className="font-medium text-fg">{u.full_name} <span className="text-xs text-faint">{u.code}</span></div>
+                      <div className="text-xs text-muted">{u.email}{u.phone ? ` · ${u.phone}` : ""}</div>
                     </td>
                     <td>
                       <RoleBadge role={u.role} />
-                      {u.admin_level && <div className="mt-1 text-xs text-slate-500">{u.admin_level === "IT_MANAGER" ? "IT manager" : "System admin"}</div>}
+                      {u.admin_level && <div className="mt-1 text-xs text-muted">{u.admin_level === "IT_MANAGER" ? "IT manager" : "System admin"}</div>}
                     </td>
-                    <td className="max-w-md text-xs text-slate-600">
+                    <td className="max-w-md text-xs text-muted">
                       {u.technician_profile ? (
                         editing === u.id && categories.data ? (
                           <TechnicianEditor user={u} categories={categories.data} onCancel={() => setEditing(null)}
@@ -220,14 +221,14 @@ export function UsersPage() {
                         )
                       ) : (u.department ?? "—")}
                     </td>
-                    <td className="text-xs whitespace-nowrap text-slate-500">{formatDateTime(u.created_at)}</td>
-                    <td>{u.is_active ? <span className="text-emerald-700">Active</span> : <span className="text-slate-500">Deactivated</span>}</td>
+                    <td className="text-xs whitespace-nowrap text-muted">{formatDateTime(u.created_at)}</td>
+                    <td>{u.is_active ? <span className="text-ok">Active</span> : <span className="text-muted">Deactivated</span>}</td>
                     <td className="space-x-1 text-right whitespace-nowrap">
                       {u.technician_profile && editing !== u.id && (
                         <button className="btn-secondary btn-sm" onClick={() => setEditing(u.id)}>Edit profile</button>
                       )}
                       {u.id !== me.id && (
-                        <button className={u.is_active ? "btn-ghost btn-sm text-rose-600" : "btn-secondary btn-sm"} onClick={() => toggleActive(u)}>
+                        <button className={u.is_active ? "btn-ghost btn-sm text-critical" : "btn-secondary btn-sm"} onClick={() => toggleActive(u)}>
                           {u.is_active ? "Deactivate" : "Activate"}
                         </button>
                       )}

@@ -15,6 +15,8 @@ export function IncidentTable({ incidents, columns = ["service", "technician", "
   const navigate = useNavigate();
   if (incidents.length === 0) return <EmptyState title={empty} />;
   const show = (c: Column) => columns.includes(c);
+  // With the deadline shown, creation time is the least actionable column, so it gives way on narrower screens.
+  const createdClass = show("due") ? "hidden 2xl:table-cell" : "";
 
   return (
     <div className="overflow-x-auto">
@@ -24,12 +26,11 @@ export function IncidentTable({ incidents, columns = ["service", "technician", "
             <th>Incident</th>
             <th>Priority</th>
             <th>Status</th>
-            <th>SLA</th>
+            <th>{show("due") ? "SLA · next deadline" : "SLA"}</th>
             {show("service") && <th>Service</th>}
             {show("reporter") && <th>Reporter</th>}
             {show("technician") && <th>Technician</th>}
-            {show("due") && <th>Next deadline</th>}
-            <th>Created</th>
+            <th className={createdClass}>Created</th>
           </tr>
         </thead>
         <tbody>
@@ -38,35 +39,34 @@ export function IncidentTable({ incidents, columns = ["service", "technician", "
             const open = !["RESOLVED", "VERIFIED", "CLOSED"].includes(i.status);
             return (
               <tr key={i.id} className="cursor-pointer" onClick={() => navigate(`/incidents/${i.id}`)}>
-                <td className="max-w-md">
+                <td className="max-w-md min-w-48">
                   <div className="flex items-center gap-2">
-                    <span className="font-mono text-xs text-slate-500">{i.number}</span>
+                    <span className="mono text-faint">{i.number}</span>
                     <EscalationBadge level={i.escalation_level} />
                   </div>
                   <a
                     href={`/incidents/${i.id}`}
                     onClick={(e) => e.preventDefault()}
-                    className="font-medium text-slate-900 hover:text-[var(--accent)]"
+                    className="font-medium text-fg hover:text-brand"
                   >
                     {i.title}
                   </a>
-                  {i.category && <div className="text-xs text-slate-500">{i.category.name}</div>}
+                  {i.category && <div className="text-[12px] text-muted">{i.category.name}</div>}
                 </td>
                 <td><PriorityBadge priority={i.priority} /></td>
                 <td><StatusBadge status={i.status} /></td>
-                <td><SlaBadge status={i.sla_status} /></td>
-                {show("service") && <td className="text-slate-600">{i.service?.name}</td>}
-                {show("reporter") && <td className="text-slate-600">{i.reporter?.name}</td>}
+                <td className="whitespace-nowrap">
+                  <SlaBadge status={i.sla_status} />
+                  {show("due") && open && i.status !== "PENDING_INFO" && (
+                    <div className="mt-1"><DueIn due={waitingForResponse ? i.response_due_at : i.resolution_due_at} /></div>
+                  )}
+                </td>
+                {show("service") && <td className="text-muted">{i.service?.name}</td>}
+                {show("reporter") && <td className="text-muted">{i.reporter?.name}</td>}
                 {show("technician") && (
-                  <td className="text-slate-600">{i.technician?.name ?? <span className="text-amber-700">Unassigned</span>}</td>
+                  <td className="text-muted">{i.technician?.name ?? <span className="font-medium text-warning">Unassigned</span>}</td>
                 )}
-                {show("due") && (
-                  <td>
-                    <DueIn due={waitingForResponse ? i.response_due_at : i.resolution_due_at}
-                           done={!open || i.status === "PENDING_INFO"} />
-                  </td>
-                )}
-                <td className="whitespace-nowrap text-slate-500">{relativeTime(i.created_at)}</td>
+                <td className={`text-[12.5px] whitespace-nowrap text-muted tabular-nums ${createdClass}`}>{relativeTime(i.created_at)}</td>
               </tr>
             );
           })}

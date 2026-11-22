@@ -1,7 +1,7 @@
 # Local setup (backend)
 
 Everything runs locally: no Docker, no cloud. Verified on macOS (arm64) with Python 3.14.10 and PostgreSQL 18.6.
-The full README (with frontend and demo credentials) arrives in Phase 4; this page covers the backend.
+The root [`README.md`](../README.md) has the quick start and demo accounts; this page has the detailed steps and versions.
 
 ## 1. Prerequisites
 
@@ -51,7 +51,7 @@ cd backend
 python3.14 -m venv .venv && source .venv/bin/activate      # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 alembic upgrade head
-uvicorn app.main:create_app --factory --reload
+uvicorn app.main:create_app --factory --reload --timeout-graceful-shutdown 3
 ```
 
 ## 5. Web UI (frontend)
@@ -87,7 +87,7 @@ cd backend
 ```
 
 The seeder replays two weeks of history through the real services: 18 users, 11 services with dependencies, 9 categories,
-7 SLA policies and 42 incidents in every state, with SLA violations, near-duplicate links, escalations and feedback.
+7 SLA policies and 43 incidents in every state, with SLA violations, near-duplicate links, escalations and feedback.
 Times are relative to "now", so re-seed shortly before a demo (open P1s keep escalating as real time passes).
 
 **All demo accounts use the password `Demo@1234`.**
@@ -117,7 +117,7 @@ Times are relative to "now", so re-seed shortly before a demo (open P1s keep esc
 
 ```bash
 cd backend
-.venv/bin/pytest                                   # 158 cases, SQLite in-memory, no setup needed (~20 s)
+.venv/bin/pytest                                   # 171 cases, SQLite in-memory, no setup needed
 ITSM_TEST_DATABASE_URL=postgresql+psycopg://<user>@localhost:5432/itsm_test .venv/bin/pytest tests/api   # same tests on PostgreSQL
 ```
 

@@ -2,9 +2,9 @@ import { useMemo } from "react";
 import type { CorrelationReport, ServiceNode } from "../api/types";
 
 const HEALTH_FILL: Record<ServiceNode["health"], string> = {
-  HEALTHY: "fill-emerald-50 stroke-emerald-400",
-  DEGRADED: "fill-amber-50 stroke-amber-400",
-  HOTSPOT: "fill-rose-100 stroke-rose-500",
+  HEALTHY: "fill-surface stroke-line-strong",
+  DEGRADED: "fill-warning-soft stroke-warning-solid",
+  HOTSPOT: "fill-critical-soft stroke-critical-solid",
 };
 
 /** Layer = longest path to a service with no dependencies, so infrastructure sits at the bottom. */
@@ -45,7 +45,7 @@ export function DependencyGraph({ report, onSelect }: { report: CorrelationRepor
     <svg viewBox={`0 0 ${layout.width} ${layout.height}`} className="w-full" role="img" aria-label="Service dependency graph">
       <defs>
         <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-          <path d="M 0 0 L 10 5 L 0 10 z" className="fill-slate-400" />
+          <path d="M 0 0 L 10 5 L 0 10 z" className="fill-faint" />
         </marker>
       </defs>
       {report.edges.map(([from, to]) => {
@@ -54,7 +54,7 @@ export function DependencyGraph({ report, onSelect }: { report: CorrelationRepor
         if (!a || !b) return null;
         return (
           <line key={`${from}-${to}`} x1={a.x} y1={a.y + nodeH / 2} x2={b.x} y2={b.y - nodeH / 2 - 2}
-                className="stroke-slate-300" strokeWidth={1.5} markerEnd="url(#arrow)" />
+                className="stroke-line-strong" strokeWidth={1.5} markerEnd="url(#arrow)" />
         );
       })}
       {report.nodes.map((n) => {
@@ -63,9 +63,9 @@ export function DependencyGraph({ report, onSelect }: { report: CorrelationRepor
           <g key={n.service_id} transform={`translate(${p.x - nodeW / 2}, ${p.y - nodeH / 2})`}
              className={onSelect ? "cursor-pointer" : ""} onClick={() => onSelect?.(n.service_id)}>
             <title>{`${n.name}: ${n.open_incidents} open, ${n.recent_incidents} in the last 2 h (${n.health.toLowerCase()})`}</title>
-            <rect width={nodeW} height={nodeH} rx={10} strokeWidth={n.health === "HOTSPOT" ? 2.5 : 1.5} className={HEALTH_FILL[n.health]} />
-            <text x={nodeW / 2} y={20} textAnchor="middle" className="fill-slate-800 text-[11.5px] font-semibold">{n.name}</text>
-            <text x={nodeW / 2} y={36} textAnchor="middle" className="fill-slate-500 text-[10px]">
+            <rect width={nodeW} height={nodeH} rx={4} strokeWidth={n.health === "HOTSPOT" ? 2.5 : 1.5} className={HEALTH_FILL[n.health]} />
+            <text x={nodeW / 2} y={20} textAnchor="middle" className="fill-fg text-[11.5px] font-semibold">{n.name}</text>
+            <text x={nodeW / 2} y={36} textAnchor="middle" className="fill-muted font-mono text-[10px]">
               {n.open_incidents} open · crit {n.criticality}
             </text>
           </g>

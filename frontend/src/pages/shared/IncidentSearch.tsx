@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router";
 import { incidentsApi, lookupsApi } from "../../api/endpoints";
 import { ALL_PRIORITIES, ALL_SLA_STATUSES, ALL_STATUSES, type SortOrder } from "../../api/types";
 import { isStaff, useUser } from "../../auth/AuthContext";
+import { DownloadButton } from "../../components/DownloadButton";
 import { IncidentTable } from "../../components/IncidentTable";
 import { Card, ErrorMessage, PageHeader, Pagination, Spinner } from "../../components/ui";
 import { useLiveRefresh } from "../../hooks/LiveEvents";
@@ -28,7 +29,7 @@ function MultiSelect({ label, name, options, values, onChange }: {
           return (
             <button type="button" key={o.value} aria-pressed={on} name={name}
                     onClick={() => onChange(on ? values.filter((v) => v !== o.value) : [...values, o.value])}
-                    className={`rounded-full border px-2.5 py-1 text-xs ${on ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-strong)]" : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"}`}>
+                    className={`rounded-[3px] border px-2 py-0.5 text-[12px] transition-colors ${on ? "border-brand bg-brand-soft text-fg" : "border-line bg-surface text-muted hover:border-line-strong hover:text-fg"}`}>
               {o.label}
             </button>
           );
@@ -88,8 +89,8 @@ export function IncidentSearchPage() {
     <>
       <PageHeader title={staff ? "Incidents" : "Search my incidents"}
                   subtitle="Combine any filters; results update live as incidents change." />
-      <div className="grid gap-6 lg:grid-cols-4">
-        <Card className="h-fit lg:col-span-1" title="Filters"
+      <div className="grid items-start gap-6 lg:grid-cols-[264px_minmax(0,1fr)]">
+        <Card title="Filters"
               actions={activeFilters > 0 && (
                 <button className="link text-xs" onClick={() => { setDraft({ number: "", q: "" }); setParams(new URLSearchParams()); }}>
                   Clear all
@@ -139,7 +140,7 @@ export function IncidentSearchPage() {
                   <option value="">Anyone</option>
                   {technicians.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
                 </select>
-                <label className="mt-2 flex items-center gap-2 text-sm text-slate-600">
+                <label className="mt-2 flex items-center gap-2 text-sm text-muted">
                   <input type="checkbox" checked={params.get("unassigned") === "true"}
                          onChange={(e) => update({ unassigned: e.target.checked ? "true" : null })} />
                   Unassigned only
@@ -158,7 +159,7 @@ export function IncidentSearchPage() {
                        onChange={(e) => update({ created_to: e.target.value || null })} />
               </div>
             </div>
-            <label className="flex items-center gap-2 text-sm text-slate-600">
+            <label className="flex items-center gap-2 text-sm text-muted">
               <input type="checkbox" checked={params.get("open_only") === "true"}
                      onChange={(e) => update({ open_only: e.target.checked ? "true" : null })} />
               Open incidents only
@@ -166,19 +167,25 @@ export function IncidentSearchPage() {
           </div>
         </Card>
 
-        <Card className="lg:col-span-3"
+        <Card flush
               title={result.data ? `${result.data.total} result${result.data.total === 1 ? "" : "s"}` : "Results"}
               actions={
-                <select className="input w-auto" aria-label="Sort" value={params.get("sort") ?? "-created_at"}
-                        onChange={(e) => update({ sort: e.target.value as SortOrder })}>
-                  <option value="-created_at">Newest first</option>
-                  <option value="created_at">Oldest first</option>
-                  <option value="priority">Priority</option>
-                  <option value="-updated_at">Recently updated</option>
-                </select>
+                <div className="flex items-center gap-2">
+                  {/* Exports every matching incident (all pages) with the same filters and visibility. */}
+                  {(result.data?.total ?? 0) > 0 && (
+                    <DownloadButton onDownload={() => incidentsApi.exportCsv({ ...query, page: undefined, page_size: undefined })} />
+                  )}
+                  <select className="input h-7 w-auto py-0 text-[13px]" aria-label="Sort" value={params.get("sort") ?? "-created_at"}
+                          onChange={(e) => update({ sort: e.target.value as SortOrder })}>
+                    <option value="-created_at">Newest first</option>
+                    <option value="created_at">Oldest first</option>
+                    <option value="priority">Priority</option>
+                    <option value="-updated_at">Recently updated</option>
+                  </select>
+                </div>
               }>
-          {result.error && <ErrorMessage error={result.error} onRetry={result.reload} />}
-          {result.loading && !result.data && <Spinner />}
+          {result.error && <div className="p-4"><ErrorMessage error={result.error} onRetry={result.reload} /></div>}
+          {result.loading && !result.data && <div className="px-4"><Spinner /></div>}
           {result.data && (
             <>
               <IncidentTable incidents={result.data.items}

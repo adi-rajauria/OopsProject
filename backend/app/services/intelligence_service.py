@@ -1,3 +1,6 @@
+from collections import defaultdict
+from statistics import mean
+
 from app.domain.clock import Clock
 from app.domain.enums import IncidentStatus, Permission
 from app.domain.exceptions import UnauthorizedOperationError
@@ -7,8 +10,11 @@ from app.domain.users import User
 from app.intelligence.category_classifier import CategorySuggester, CategorySuggestion, LabelledText
 from app.intelligence.correlation import CorrelationReport, IncidentCorrelator
 from app.intelligence.duplicate_detector import DuplicateCheck, DuplicateDetector
-from app.intelligence.recommender import Recommendation, TechnicianRecommender
+from app.intelligence.recommender import RatingSummary, Recommendation, TechnicianRecommender
+from app.intelligence.recurring import RecurringProblem, RecurringProblemDetector
 from app.intelligence.resolution_suggester import ResolutionSuggester, SuggestedResolution
+from app.intelligence.resolution_time import ResolutionEstimate, ResolutionTimeEstimator
+from app.intelligence.severity_hints import SeverityAdvisor, SeverityHint
 from app.intelligence.sla_risk import RiskLevel, SLARiskAnalyzer, SLARiskAssessment
 from app.intelligence.text_similarity import TextSimilarity, incident_text
 from app.services.assignment_service import AssignmentService
@@ -33,9 +39,12 @@ class IntelligenceService:
         self._categories = CategorySuggester(similarity)
         self._duplicates = DuplicateDetector(similarity)
         self._resolutions = ResolutionSuggester(similarity)
+        self._resolution_time = ResolutionTimeEstimator()
+        self._severity = SeverityAdvisor()
         self._recommender = TechnicianRecommender()
         self._risk = SLARiskAnalyzer()
         self._correlator = IncidentCorrelator()
+        self._recurring = RecurringProblemDetector(similarity)
 
     # --- used while reporting (any user who can report) ------------------------------
     def suggest_category(self, title: str, description: str) -> list[CategorySuggestion]:
@@ -60,13 +69,39 @@ class IntelligenceService:
             exclude_id=exclude_id,
         )
 
+    def suggest_severity(self, title: str, description: str) -> SeverityHint:
+        return self._severity.suggest(title, description)
+
+    def self_help(self, title: str, description: str) -> list[SuggestedResolution]:
+        """Fixes that worked for similar resolved incidents, shown to the reporter before they submit."""
+        return self._resolutions.suggest_for_text(title, description, self._uow.incidents.list_all())
+
+    def estimate_resolution(self, incident: Incident) -> ResolutionEstimate | None:
+        """Typical time to resolve; the caller has already checked the viewer may see the incident."""
+        category = self._uow.categories.get(incident.category_id) if incident.category_id else None
+        return self._resolution_time.estimate(
+            incident, self._uow.incidents.list_all(), category.name if category else None
+        )
+
     # --- staff features --------------------------------------------------------------
     def recommend_technicians(self, incident: Incident, viewer: User) -> list[Recommendation]:
         _require_staff(viewer)
         category = self._uow.categories.get(incident.category_id) if incident.category_id else None
         return self._recommender.recommend(
-            self._assignment.candidates_for(incident), category.code if category else None, incident.priority
+            self._assignment.candidates_for(incident),
+            category.code if category else None,
+            incident.priority,
+            ratings=self._ratings_by_technician(),
         )
+
+    def _ratings_by_technician(self) -> dict[int, RatingSummary]:
+        technician_of = {i.id: i.assigned_technician_id for i in self._uow.incidents.list_all()}
+        stars: dict[int, list[int]] = defaultdict(list)
+        for feedback in self._uow.feedback.list():
+            technician_id = technician_of.get(feedback.incident_id)
+            if technician_id is not None:
+                stars[technician_id].append(feedback.rating)
+        return {tid: RatingSummary(mean(values), len(values)) for tid, values in stars.items()}
 
     def suggested_resolutions(self, incident: Incident, viewer: User) -> list[SuggestedResolution]:
         _require_staff(viewer)
@@ -79,3 +114,7 @@ class IntelligenceService:
     def correlation(self, viewer: User) -> CorrelationReport:
         _require_staff(viewer)
         return self._correlator.analyse(self._uow.services.list(), self._uow.incidents.list_all(), self._clock.now())
+
+    def recurring_problems(self, viewer: User) -> list[RecurringProblem]:
+        _require_staff(viewer)
+        return self._recurring.detect(self._uow.services.list(), self._uow.incidents.list_all(), self._clock.now())

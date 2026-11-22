@@ -15,8 +15,11 @@ from app.intelligence.category_classifier import CategorySuggester, LabelledText
 from app.intelligence.correlation import Health, IncidentCorrelator
 from app.intelligence.duplicate_detector import DuplicateDetector
 from app.intelligence.escalation import EscalationPolicy
-from app.intelligence.recommender import TechnicianRecommender
+from app.intelligence.recommender import RatingSummary, TechnicianRecommender
+from app.intelligence.recurring import RecurringProblemDetector
 from app.intelligence.resolution_suggester import ResolutionSuggester
+from app.intelligence.resolution_time import ResolutionTimeEstimator
+from app.intelligence.severity_hints import SeverityAdvisor
 from app.intelligence.sla_risk import RiskLevel, SLARiskAnalyzer
 from app.intelligence.text_similarity import TfidfTextSimilarity, incident_text
 from tests.conftest import START
@@ -38,6 +41,7 @@ def incident(
     resolution=120,
     assignee: int | None = 7,
     summary: str | None = None,
+    category: int | None = None,
 ) -> Incident:
     created = START - timedelta(minutes=age_min)
     sla = IncidentSLA.from_policy(
@@ -57,6 +61,7 @@ def incident(
         sla=sla,
         assigned_technician_id=assignee,
         resolution_summary=summary,
+        category_id=category,
     )
 
 
@@ -159,6 +164,19 @@ def test_recommender_ranks_with_reasons_and_puts_ineligible_last():
     assert critical[0].breakdown["experience"] > ranked[0].breakdown["experience"]  # P1 values experience more
 
 
+def test_recommender_prefers_better_rated_technician_and_ignores_too_few_ratings():
+    twins = [TechnicianCandidate(tech(1, ["NETWORK"], 5), 1, 0), TechnicianCandidate(tech(2, ["NETWORK"], 5), 1, 0)]
+    rated = TechnicianRecommender().recommend(
+        twins, "NETWORK", Priority.P3, ratings={1: RatingSummary(2.0, 3), 2: RatingSummary(4.8, 5)}
+    )
+    assert [r.technician_id for r in rated] == [2, 1]
+    assert "rated 4.8/5 by 5 reporter(s)" in rated[0].reasons
+    assert rated[0].breakdown["rating"] == pytest.approx(9.5) and rated[1].breakdown["rating"] == pytest.approx(2.5)
+    single = TechnicianRecommender().recommend(twins, "NETWORK", Priority.P3, ratings={2: RatingSummary(5.0, 1)})
+    assert single[0].score == single[1].score  # one rating is not enough to separate them
+    assert "not enough ratings yet" in single[0].reasons
+
+
 # --- Feature 3: SLA risk -------------------------------------------------------------------------
 
 
@@ -225,6 +243,51 @@ def test_correlation_finds_hotspot_and_upstream_cause():
     assert report.finding_for(5) is None and report.edges == [(2, 1)]
 
 
+# --- Impact / urgency hints ----------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("title", "description", "impact", "urgency"),
+    [
+        ("Checkout broken", "All customers cannot pay since 10:00", 4, 4),
+        ("Payroll export", "The whole department is blocked before the deadline", 3, 3),
+        ("Shared drive", "A few colleagues see the drive intermittently", 2, 2),
+        ("Keyboard", "Only me: a cosmetic issue on my keyboard", 1, 1),
+        ("Something is weird", "Not sure what is happening today", None, None),
+    ],
+)
+def test_severity_hints_take_the_strongest_phrase(title, description, impact, urgency):
+    hint = SeverityAdvisor().suggest(title, description)
+    assert (hint.impact, hint.urgency) == (impact, urgency)
+    assert (hint.impact_reason is None) == (impact is None) and (hint.urgency_reason is None) == (urgency is None)
+
+
+def test_severity_hint_explains_with_the_matched_phrase():
+    hint = SeverityAdvisor().suggest("Payment application unavailable", "Users are unable to complete transactions")
+    assert hint.urgency == 4 and hint.urgency_reason == 'mentions "unable to complete transactions"'
+    assert hint.impact is None  # "users" alone does not say how many
+
+
+# --- Recurring problems ------------------------------------------------------------------------
+
+
+def test_recurring_problem_groups_similar_incidents_across_days_but_not_bursts():
+    services = [ITService(id=1, code="VPN", name="VPN", business_criticality=3), ITService(id=2, code="PAY", name="Payments", business_criticality=4)]
+    vpn = [
+        incident(1, "VPN disconnects every 10 minutes", "Remote staff lose the VPN connection", age_min=12 * 1440, status=IncidentStatus.CLOSED, summary="Replaced the uplink"),
+        incident(2, "VPN keeps disconnecting remote staff", "Remote staff are disconnected from the VPN again", age_min=6 * 1440, status=IncidentStatus.CLOSED, summary="Restarted the VPN concentrator"),
+        incident(3, "VPN tunnel drops for remote staff", "The VPN tunnel keeps dropping for remote workers", age_min=240),
+        incident(4, "Printer jams on floor 2", "Paper jam on every page", age_min=3 * 1440),  # same service, unrelated
+        incident(5, "VPN drops again", "VPN disconnects for remote staff", age_min=45 * 1440),  # older than 30 days
+    ]
+    burst = [incident(10 + n, "Payment application unavailable", "Users cannot complete transactions", service=2, age_min=30 + n) for n in range(4)]
+    [problem] = RecurringProblemDetector(SIM).detect(services, vpn + burst, START)
+    assert problem.service == "VPN" and problem.incident_ids == (3, 2, 1)  # newest first; the burst is not recurring
+    assert problem.occurrences == 3 and problem.open_count == 1
+    assert problem.latest_fix == "Restarted the VPN concentrator" and "came back" in problem.reason
+    assert RecurringProblemDetector(SIM).detect(services, vpn[:2], START) == []  # 2 < minimum of 3
+
+
 # --- Suggested resolution (bonus) -------------------------------------------------------------
 
 
@@ -244,3 +307,38 @@ def test_resolution_suggestions_come_from_similar_resolved_incidents():
     suggestions = ResolutionSuggester(SIM).suggest(current, history)
     assert [s.incident_id for s in suggestions] == [1]
     assert suggestions[0].resolution == "Renewed the VPN gateway certificate"
+    # self-service: the same search on text the employee is still typing, before any incident exists
+    tips = ResolutionSuggester(SIM).suggest_for_text("VPN keeps disconnecting", "", history)
+    assert [t.incident_id for t in tips] == [1]
+    assert ResolutionSuggester(SIM).suggest_for_text("Coffee machine is empty", "", history) == []
+
+
+# --- Predicted resolution time ------------------------------------------------------------------
+
+
+def resolved(iid: int, worked_min: float, *, priority=Priority.P2, category: int | None = 1, paused_min: float = 0):
+    """A resolved incident that took worked_min minutes of work plus paused_min waiting on the reporter."""
+    done = incident(iid, f"Past {iid}", age_min=500, status=IncidentStatus.CLOSED, priority=priority, category=category)
+    if paused_min:
+        done.sla.pause(done.created_at)
+        done.sla.resume(done.created_at + timedelta(minutes=paused_min))
+    done.sla.mark_resolved(done.created_at + timedelta(minutes=worked_min + paused_min))
+    return done
+
+
+def test_resolution_estimate_uses_median_of_same_category_and_priority_excluding_pauses():
+    current = incident(99, "Open one", age_min=10, category=1)
+    history = [resolved(1, 60), resolved(2, 90, paused_min=600), resolved(3, 600), resolved(4, 5, category=2)]
+    estimate = ResolutionTimeEstimator().estimate(current, history, "Network")
+    assert estimate is not None and estimate.median_minutes == 90 and estimate.sample_size == 3
+    assert estimate.basis == "P2 Network incidents" and "1.5 h" in estimate.reason
+    assert estimate.expected_by == current.created_at + timedelta(minutes=90)
+
+
+def test_resolution_estimate_falls_back_to_priority_then_to_nothing():
+    current = incident(99, "Open one", age_min=10, category=1)
+    history = [resolved(1, 30), resolved(2, 40, category=2), resolved(3, 50, category=3)]
+    fallback = ResolutionTimeEstimator().estimate(current, history, "Network")
+    assert fallback is not None and fallback.basis == "P2 incidents" and fallback.median_minutes == 40
+    too_few = [resolved(1, 30), resolved(2, 40, priority=Priority.P1), resolved(3, 50)]
+    assert ResolutionTimeEstimator().estimate(current, too_few) is None  # only 2 P2 samples

@@ -6,6 +6,7 @@ import { useUser } from "../../auth/AuthContext";
 import { PriorityBadge, StatusBadge } from "../../components/badges";
 import { IncidentTable } from "../../components/IncidentTable";
 import { Card, ErrorMessage, PageHeader, Pagination, Spinner, Tabs } from "../../components/ui";
+import { PlusIcon } from "../../components/icons";
 import { useAsync } from "../../hooks/useAsync";
 import { useLiveRefresh } from "../../hooks/LiveEvents";
 import { OPEN_STATUSES, relativeTime } from "../../lib/format";
@@ -15,17 +16,22 @@ type Tab = "open" | "done";
 function AttentionList({ items }: { items: IncidentSummary[] }) {
   if (items.length === 0) return null;
   return (
-    <Card title="Needs your attention" className="mb-6 border-amber-200">
-      <ul className="divide-y divide-slate-100">
+    <section className="mb-6 overflow-hidden rounded-md border border-line border-l-[3px] border-l-warning-solid bg-surface"
+             aria-labelledby="attention-heading">
+      <header className="flex items-baseline justify-between gap-3 border-b border-line bg-warning-soft px-4 py-2.5">
+        <h2 id="attention-heading" className="text-[13.5px]">Needs your attention</h2>
+        <span className="text-[12px] text-muted">{items.length} waiting on you</span>
+      </header>
+      <ul className="divide-y divide-line">
         {items.map((i) => (
-          <li key={i.id} className="flex flex-wrap items-center justify-between gap-3 py-2.5">
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-xs text-slate-500">{i.number}</span>
+          <li key={i.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="mono text-faint">{i.number}</span>
                 <PriorityBadge priority={i.priority} />
                 <StatusBadge status={i.status} />
               </div>
-              <p className="font-medium text-slate-900">{i.title}</p>
+              <Link to={`/incidents/${i.id}`} className="mt-0.5 block font-medium text-fg hover:text-brand">{i.title}</Link>
             </div>
             <Link to={`/incidents/${i.id}`} className="btn-primary btn-sm">
               {i.status === "PENDING_INFO" ? "Answer the technician" : "Confirm the fix"}
@@ -33,7 +39,7 @@ function AttentionList({ items }: { items: IncidentSummary[] }) {
           </li>
         ))}
       </ul>
-    </Card>
+    </section>
   );
 }
 
@@ -60,11 +66,12 @@ export function MyIncidentsPage() {
       <PageHeader
         title={`Hello, ${user.full_name.split(" ")[0]}`}
         subtitle="Track the incidents you reported and respond when IT needs something from you."
-        actions={<Link className="btn-primary" to="/employee/report">+ Report an incident</Link>}
+        actions={<Link className="btn-primary" to="/employee/report"><PlusIcon size={14} />Report an incident</Link>}
       />
       {attention.data && <AttentionList items={attention.data.items} />}
-      <Card>
+      <Card flush>
         <Tabs
+          className="px-4"
           tabs={[{ key: "open", label: "Open" }, { key: "done", label: "Resolved & closed" }]}
           active={tab}
           onChange={(t) => {
@@ -72,8 +79,8 @@ export function MyIncidentsPage() {
             setPage(1);
           }}
         />
-        {list.error && <ErrorMessage error={list.error} onRetry={list.reload} />}
-        {list.loading && !list.data && <Spinner />}
+        {list.error && <div className="p-4"><ErrorMessage error={list.error} onRetry={list.reload} /></div>}
+        {list.loading && !list.data && <div className="px-4"><Spinner /></div>}
         {list.data && (
           <>
             <IncidentTable incidents={list.data.items} columns={["service", "technician"]}
@@ -84,7 +91,7 @@ export function MyIncidentsPage() {
           </>
         )}
         {list.data && list.data.items[0] && (
-          <p className="text-xs text-slate-400">Last update {relativeTime(list.data.items[0].updated_at)}</p>
+          <p className="border-t border-line px-4 py-2 text-[12px] text-faint">Last update {relativeTime(list.data.items[0].updated_at)}</p>
         )}
       </Card>
     </>

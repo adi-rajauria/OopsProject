@@ -1,4 +1,4 @@
-import { http, type Query } from "./client";
+import { download, http, type Query } from "./client";
 import type {
   AuditRecord,
   Category,
@@ -12,10 +12,14 @@ import type {
   Notification,
   Overview,
   Recommendation,
+  RecurringProblem,
   Ref,
+  ResolutionEstimate,
   RiskAssessment,
   RiskLevel,
   SearchPage,
+  SelfHelpTip,
+  SeverityHint,
   Service,
   ServiceStats,
   SLACheckSummary,
@@ -57,6 +61,7 @@ export const authApi = {
 
 export const incidentsApi = {
   search: (query: Query) => http.get<SearchPage>("/incidents", query),
+  exportCsv: (query: Query) => download("/incidents/export.csv", query, "incidents.csv"),
   get: (id: number) => http.get<IncidentDetail>(`/incidents/${id}`),
   create: (body: NewIncident) => http.post<IncidentDetail>("/incidents", body),
   update: (id: number, body: IncidentPatch) => http.patch<IncidentDetail>(`/incidents/${id}`, body),
@@ -80,6 +85,7 @@ export const incidentsApi = {
   audit: (id: number) => http.get<AuditRecord[]>(`/incidents/${id}/audit`),
   recommendations: (id: number) => http.get<Recommendation[]>(`/incidents/${id}/recommendations`),
   suggestedResolutions: (id: number) => http.get<SuggestedResolution[]>(`/incidents/${id}/suggested-resolutions`),
+  resolutionEstimate: (id: number) => http.get<ResolutionEstimate | null>(`/incidents/${id}/resolution-estimate`),
 };
 
 export const intelligenceApi = {
@@ -87,8 +93,13 @@ export const intelligenceApi = {
     http.post<CategorySuggestion[]>("/intelligence/suggest-category", { title, description }),
   checkDuplicates: (title: string, description: string, service_id: number) =>
     http.post<IncidentLink[]>("/intelligence/check-duplicates", { title, description, service_id }),
+  suggestSeverity: (title: string, description: string) =>
+    http.post<SeverityHint>("/intelligence/suggest-severity", { title, description }),
+  selfHelp: (title: string, description: string) =>
+    http.post<SelfHelpTip[]>("/intelligence/self-help", { title, description }),
   slaRisk: (minimum: RiskLevel = "MEDIUM") => http.get<RiskAssessment[]>("/intelligence/sla-risk", { minimum }),
   correlation: () => http.get<CorrelationReport>("/intelligence/correlation"),
+  recurring: () => http.get<RecurringProblem[]>("/intelligence/recurring"),
 };
 
 export const lookupsApi = {
@@ -116,6 +127,7 @@ export const reportsApi = {
   technicians: () => http.get<TechnicianStats[]>("/reports/technicians"),
   services: () => http.get<ServiceStats[]>("/reports/services"),
   sla: () => http.get<SLAReport>("/reports/sla"),
+  slaViolationsCsv: () => download("/reports/sla/violations.csv", undefined, "sla-violations.csv"),
   trends: (days = 14) => http.get<TrendPoint[]>("/reports/trends", { days }),
 };
 

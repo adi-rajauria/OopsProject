@@ -5,13 +5,14 @@ import type { Comment, IncidentAction, IncidentDetail, User } from "../../api/ty
 import { isStaff, useUser } from "../../auth/AuthContext";
 import { EscalationBadge, PriorityBadge, StatusBadge } from "../../components/badges";
 import { Stars } from "../../components/charts";
+import { ArrowLeftIcon, StarIcon } from "../../components/icons";
 import { SlaPanel } from "../../components/SlaPanel";
 import { Timeline } from "../../components/Timeline";
 import { useToast } from "../../components/Toasts";
-import { Card, ErrorMessage, Spinner } from "../../components/ui";
+import { Card, ErrorMessage, Notice, Spinner } from "../../components/ui";
 import { useLiveRefresh } from "../../hooks/LiveEvents";
 import { useAsync } from "../../hooks/useAsync";
-import { formatDateTime, IMPACT_OPTIONS, relativeTime, URGENCY_OPTIONS } from "../../lib/format";
+import { formatDateTime, formatMinutes, IMPACT_OPTIONS, relativeTime, URGENCY_OPTIONS } from "../../lib/format";
 
 type Refresh = (incident?: IncidentDetail) => void;
 
@@ -72,8 +73,8 @@ function RatingInput({ value, onChange }: { value: number; onChange: (v: number)
     <div className="flex gap-1" role="radiogroup" aria-label="Rating">
       {[1, 2, 3, 4, 5].map((n) => (
         <button key={n} type="button" role="radio" aria-checked={value === n} aria-label={`${n} stars`}
-                className={`text-2xl ${n <= value ? "text-amber-500" : "text-slate-300"} hover:scale-110`} onClick={() => onChange(n)}>
-          ★
+                className={`rounded p-0.5 ${n <= value ? "text-warning-solid" : "text-line-strong"} hover:text-warning-solid`} onClick={() => onChange(n)}>
+          <StarIcon size={22} filled={n <= value} />
         </button>
       ))}
     </div>
@@ -92,7 +93,7 @@ function VerifyForm({ incident, mode, busy, onSubmit, onCancel }: {
   return (
     <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); onSubmit(rating, comment); }}>
       {mode === "verify" && (
-        <p className="text-sm text-slate-600">
+        <p className="text-sm text-muted">
           Confirm that <strong>{incident.resolution_summary ?? "the fix"}</strong> solved your problem.
         </p>
       )}
@@ -280,11 +281,11 @@ function EditForm({ incident, busy, onSave, onCancel }: {
 // ---------------------------------------------------------------- conversation
 
 const KIND_STYLE: Record<Comment["kind"], { label: string; className: string }> = {
-  COMMENT: { label: "Comment", className: "border-slate-200 bg-white" },
-  NOTE: { label: "Investigation note", className: "border-slate-200 bg-white" },
-  INFO_REQUEST: { label: "Information requested", className: "border-amber-200 bg-amber-50" },
-  INFO_REPLY: { label: "Reply from reporter", className: "border-sky-200 bg-sky-50" },
-  RESOLUTION: { label: "Resolution", className: "border-emerald-200 bg-emerald-50" },
+  COMMENT: { label: "Comment", className: "border-l-line-strong" },
+  NOTE: { label: "Investigation note", className: "border-l-line-strong" },
+  INFO_REQUEST: { label: "Information requested", className: "border-l-warning-solid" },
+  INFO_REPLY: { label: "Reply from reporter", className: "border-l-brand" },
+  RESOLUTION: { label: "Resolution", className: "border-l-ok-solid" },
 };
 
 function Conversation({ incident, user, refresh }: { incident: IncidentDetail; user: User; refresh: Refresh }) {
@@ -296,20 +297,20 @@ function Conversation({ incident, user, refresh }: { incident: IncidentDetail; u
   return (
     <Card title={`Conversation & notes (${incident.comments.length})`}>
       <ul className="space-y-3">
-        {incident.comments.length === 0 && <li className="text-sm text-slate-500">No messages yet.</li>}
+        {incident.comments.length === 0 && <li className="text-sm text-muted">No messages yet.</li>}
         {incident.comments.map((c) => {
           const style = c.is_internal
-            ? { label: "Internal note (staff only)", className: "border-violet-200 bg-violet-50" }
+            ? { label: "Internal note, staff only", className: "border-l-faint bg-sunken" }
             : KIND_STYLE[c.kind];
           return (
-            <li key={c.id ?? c.created_at} className={`rounded-lg border px-4 py-3 ${style.className}`}>
-              <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2 text-xs text-slate-500">
+            <li key={c.id ?? c.created_at} className={`rounded-r border border-line border-l-[3px] px-4 py-2.5 ${style.className}`}>
+              <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2 text-xs text-muted">
                 <span>
-                  <span className="font-semibold text-slate-700">{c.author?.name ?? "System"}</span> · {style.label}
+                  <span className="font-medium text-fg">{c.author?.name ?? "System"}</span> · {style.label}
                 </span>
-                <time dateTime={c.created_at} title={formatDateTime(c.created_at)}>{relativeTime(c.created_at)}</time>
+                <time className="tabular-nums" dateTime={c.created_at} title={formatDateTime(c.created_at)}>{relativeTime(c.created_at)}</time>
               </div>
-              <p className="text-sm whitespace-pre-wrap text-slate-800">{c.body}</p>
+              <p className="text-sm whitespace-pre-wrap text-fg">{c.body}</p>
             </li>
           );
         })}
@@ -323,7 +324,7 @@ function Conversation({ incident, user, refresh }: { incident: IncidentDetail; u
                     placeholder={isStaff(user) ? "Add an investigation note or an update for the reporter" : "Add more information for the support team"} />
           <div className="flex items-center justify-between">
             {isStaff(user) ? (
-              <label className="flex items-center gap-2 text-sm text-slate-600">
+              <label className="flex items-center gap-2 text-sm text-muted">
                 <input type="checkbox" checked={internal} onChange={(e) => setInternal(e.target.checked)} />
                 Internal note (hidden from the reporter)
               </label>
@@ -343,17 +344,17 @@ function Recommendations({ incident, user, refresh }: { incident: IncidentDetail
   const { busy, run } = useRunner(refresh);
   const canAssign = incident.available_actions.includes("assign") && user.role === "ADMINISTRATOR";
   return (
-    <Card title="Recommended technicians">
-      {recs.loading && !recs.data && <Spinner />}
-      {recs.data?.length === 0 && <p className="text-sm text-slate-500">No other technicians.</p>}
-      <ol className="space-y-3">
+    <Card title="Recommended technicians" flush>
+      {recs.loading && !recs.data && <div className="px-4"><Spinner /></div>}
+      {recs.data?.length === 0 && <p className="p-4 text-sm text-muted">No other technicians.</p>}
+      <ol className="divide-y divide-line">
         {recs.data?.map((r, index) => (
-          <li key={r.technician_id} className={`rounded-lg border px-3 py-2.5 ${r.eligible ? "border-slate-200" : "border-dashed border-slate-200 opacity-60"}`}>
+          <li key={r.technician_id} className={`px-4 py-2.5 ${r.eligible ? "" : "opacity-55"}`}>
             <div className="flex items-center justify-between gap-2">
-              <span className="font-medium text-slate-800">{index + 1}. {r.name}</span>
-              <span className="rounded bg-[var(--accent-soft)] px-2 py-0.5 text-xs font-semibold text-[var(--accent-strong)] tabular-nums">{r.score}</span>
+              <span className="font-medium text-fg"><span className="mr-2 font-mono text-[11.5px] text-faint">{index + 1}</span>{r.name}{!r.eligible && <span className="ml-2 text-[12px] font-normal text-muted">not eligible</span>}</span>
+              <span className="font-mono text-[12px] font-medium text-brand tabular-nums" title="Recommendation score">{r.score}</span>
             </div>
-            <p className="mt-1 text-xs text-slate-500">{r.reasons.join(" · ")}</p>
+            <p className="mt-1 text-xs text-muted">{r.reasons.join(" · ")}</p>
             {canAssign && r.eligible && (
               <button className="btn-secondary btn-sm mt-2" disabled={busy}
                       onClick={() => run(`Assigned to ${r.name}`, () => incidentsApi.assign(incident.id, r.technician_id))}>
@@ -376,12 +377,12 @@ function SuggestedFixes({ incident, onUse }: { incident: IncidentDetail; onUse: 
       <ul className="space-y-3">
         {fixes.data.map((f) => (
           <li key={f.incident_id} className="text-sm">
-            <div className="flex justify-between gap-2 text-xs text-slate-500">
-              <Link className="link font-mono" to={`/incidents/${f.incident_id}`}>{f.number}</Link>
+            <div className="flex justify-between gap-2 text-xs text-muted">
+              <Link className="link mono" to={`/incidents/${f.incident_id}`}>{f.number}</Link>
               <span>{Math.round(f.similarity * 100)}% similar</span>
             </div>
-            <p className="text-slate-600">{f.title}</p>
-            <p className="mt-1 rounded bg-emerald-50 px-2 py-1 text-slate-800">{f.resolution}</p>
+            <p className="text-muted">{f.title}</p>
+            <p className="mt-1.5 border-l-2 border-ok-solid pl-3 text-fg">{f.resolution}</p>
             {canResolve && <button className="link mt-1 text-xs" onClick={() => onUse(f.resolution)}>Use as my resolution</button>}
           </li>
         ))}
@@ -390,13 +391,34 @@ function SuggestedFixes({ incident, onUse }: { incident: IncidentDetail; onUse: 
   );
 }
 
+/** Typical time to resolve, from the median of comparable resolved incidents (shown to everyone who can view it). */
+function ResolutionEstimateLine({ incident }: { incident: IncidentDetail }) {
+  const estimate = useAsync(() => incidentsApi.resolutionEstimate(incident.id), [incident.id, incident.status, incident.priority]);
+  const e = estimate.data;
+  if (!e) return null;
+  // While waiting on the reporter the clock is paused, so an expected time would keep moving.
+  const working = e.expected_by !== null && !["RESOLVED", "VERIFIED", "CLOSED", "PENDING_INFO"].includes(incident.status);
+  const overdue = working && new Date(e.expected_by!).getTime() < Date.now();
+  return (
+    <div className="mt-4 border-t border-line pt-3">
+      <div className="text-[12px] text-muted">Typical time to resolve</div>
+      <div className="mt-0.5 text-[13.5px] text-fg">
+        ~{formatMinutes(e.median_minutes)}
+        {working && !overdue && <span className="text-muted"> · expected around {formatDateTime(e.expected_by)}</span>}
+        {overdue && <span className="text-warning"> · taking longer than usual</span>}
+      </div>
+      <p className="mt-0.5 text-xs text-faint">{e.reason}</p>
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------- page
 
 function Detail({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div>
-      <dt className="text-xs text-slate-500">{label}</dt>
-      <dd className="text-sm text-slate-800">{children}</dd>
+      <dt className="text-[12px] text-muted">{label}</dt>
+      <dd className="mt-0.5 text-[13.5px] text-fg">{children}</dd>
     </div>
   );
 }
@@ -424,43 +446,49 @@ export function IncidentDetailPage() {
   return (
     <div className="space-y-6">
       <div>
-        <Link to={staff ? "/incidents" : "/employee"} className="text-sm text-slate-500 hover:text-slate-700">← Back</Link>
-        <div className="mt-2 flex flex-wrap items-center gap-2">
-          <span className="font-mono text-sm text-slate-500">{i.number}</span>
+        <Link to={staff ? "/incidents" : "/employee"} className="inline-flex items-center gap-1.5 text-[13px] text-muted hover:text-fg">
+          <ArrowLeftIcon size={14} />
+          {staff ? "Incidents" : "My incidents"}
+        </Link>
+        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
+          <span className="font-mono text-[13px] text-muted">{i.number}</span>
           <PriorityBadge priority={i.priority} long />
           <StatusBadge status={i.status} />
           <EscalationBadge level={i.escalation_level} />
         </div>
-        <h1 className="mt-1">{i.title}</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Reported by {i.reporter?.name} {relativeTime(i.created_at)} · {i.service?.name}
+        <h1 className="mt-1.5 max-w-4xl text-[24px]">{i.title}</h1>
+        <p className="mt-1 text-[13px] text-muted">
+          Reported by <span className="text-fg">{i.reporter?.name}</span> {relativeTime(i.created_at)} · {i.service?.name}
+          {i.technician && <> · assigned to <span className="text-fg">{i.technician.name}</span></>}
         </p>
       </div>
 
       {i.status === "PENDING_INFO" && i.available_actions.includes("provide_info") && (
-        <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          The technician needs more information from you. Answer below to continue (the SLA clock is paused meanwhile).
-        </div>
+        <Notice tone="warning" title="The technician needs more information from you">
+          Answer below to continue. The SLA clock is paused meanwhile.
+        </Notice>
       )}
       {i.status === "RESOLVED" && i.available_actions.includes("verify") && (
-        <div className="rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
-          This incident was resolved: <strong>{i.resolution_summary}</strong>. Please confirm or reopen it.
-        </div>
+        <Notice tone="ok" title="This incident was resolved">
+          <strong className="font-medium">{i.resolution_summary}</strong>. Please confirm it is fixed, or reopen it.
+        </Notice>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="space-y-6 lg:col-span-2">
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="min-w-0 space-y-6">
           <ActionsPanel incident={i} refresh={refresh} resolutionDraft={resolutionDraft} />
+          {/* on small screens the SLA clocks come before the long history; on desktop they sit in the side rail */}
+          {i.sla && <Card className="lg:hidden"><SlaPanel sla={i.sla} /></Card>}
           <Card title="Description">
-            <p className="text-sm whitespace-pre-wrap text-slate-800">{i.description}</p>
+            <p className="text-sm whitespace-pre-wrap text-fg">{i.description}</p>
             {i.resolution_summary && (
-              <div className="mt-4 rounded-lg bg-emerald-50 px-4 py-3 text-sm">
-                <span className="font-semibold text-emerald-800">Resolution: </span>{i.resolution_summary}
+              <div className="mt-4 border-l-2 border-ok-solid pl-3 text-sm">
+                <span className="font-medium text-ok">Resolution. </span>{i.resolution_summary}
               </div>
             )}
-            {i.closure_notes && <p className="mt-2 text-sm text-slate-600"><strong>Closure notes:</strong> {i.closure_notes}</p>}
+            {i.closure_notes && <p className="mt-2 text-sm text-muted"><strong>Closure notes:</strong> {i.closure_notes}</p>}
             {i.feedback && (
-              <p className="mt-2 text-sm text-slate-600">
+              <p className="mt-2 text-sm text-muted">
                 Reporter feedback: <Stars rating={i.feedback.rating} /> {i.feedback.comment}
               </p>
             )}
@@ -471,24 +499,25 @@ export function IncidentDetailPage() {
           </Card>
         </div>
 
-        <aside className="space-y-6">
-          {i.sla && <Card><SlaPanel sla={i.sla} /></Card>}
+        <aside className="min-w-0 space-y-4">
+          {i.sla && <Card className="hidden lg:block"><SlaPanel sla={i.sla} /></Card>}
           <Card title="Details">
             <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
               <Detail label="Category">
                 {i.category?.name ?? "—"}
                 {i.suggested_category && i.suggested_category.id !== i.category?.id && (
-                  <span className="block text-xs text-slate-500">suggested: {i.suggested_category.name}</span>
+                  <span className="block text-xs text-muted">suggested: {i.suggested_category.name}</span>
                 )}
               </Detail>
               <Detail label="Service">{i.service?.name}</Detail>
-              <Detail label="Technician">{i.technician?.name ?? <span className="text-amber-700">Unassigned</span>}</Detail>
+              <Detail label="Technician">{i.technician?.name ?? <span className="text-warning">Unassigned</span>}</Detail>
               <Detail label="Priority score">{i.priority_score ?? "—"} / 64</Detail>
               <Detail label="Impact">{IMPACT_OPTIONS[i.impact - 1]?.label} ({i.impact})</Detail>
               <Detail label="Urgency">{URGENCY_OPTIONS[i.urgency - 1]?.label} ({i.urgency})</Detail>
               <Detail label="Affected users">{i.affected_users}</Detail>
               <Detail label="Last update">{relativeTime(i.updated_at)}</Detail>
             </dl>
+            <ResolutionEstimateLine incident={i} />
           </Card>
           {(i.links.length > 0 || i.parent_incident) && (
             <Card title="Related incidents">
@@ -502,16 +531,22 @@ export function IncidentDetailPage() {
                 {i.links.map((l) => (
                   <li key={l.incident_id} className="text-sm">
                     <div className="flex items-center justify-between gap-2">
-                      <Link className="link font-mono text-xs" to={`/incidents/${l.incident_id}`}>{l.number}</Link>
-                      <span className="text-xs text-slate-500">
+                      <Link className="link mono" to={`/incidents/${l.incident_id}`}>{l.number}</Link>
+                      <span className="text-xs text-muted">
                         {l.link_type === "DUPLICATE" ? "duplicate" : "related"} · {Math.round(l.similarity * 100)}%
                       </span>
                     </div>
-                    <p className="text-slate-700">{l.title}</p>
+                    <p className="text-fg">{l.title}</p>
                   </li>
                 ))}
               </ul>
             </Card>
+          )}
+          {staff && (
+            <div className="flex items-baseline justify-between border-b border-line pt-2 pb-1.5">
+              <h3>Assist</h3>
+              <span className="text-[12px] text-faint">from incident history</span>
+            </div>
           )}
           {staff && <Recommendations incident={i} user={user} refresh={refresh} />}
           {staff && (

@@ -1,14 +1,17 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router";
 import { ApiError } from "../../api/client";
 import { incidentsApi, intelligenceApi, lookupsApi } from "../../api/endpoints";
-import type { CategorySuggestion, IncidentLink } from "../../api/types";
+import type { CategorySuggestion, IncidentLink, SelfHelpTip, SeverityHint } from "../../api/types";
 import { StatusBadge } from "../../components/badges";
 import { errorMessage, useToast } from "../../components/Toasts";
 import { Card, ErrorMessage, PageHeader, Spinner } from "../../components/ui";
+import { MicIcon } from "../../components/icons";
 import { useAsync, useDebounced } from "../../hooks/useAsync";
+import { useSpeechRecognition } from "../../hooks/useSpeechRecognition";
 import { IMPACT_OPTIONS, URGENCY_OPTIONS } from "../../lib/format";
 
+/** A connected 1-4 scale: reads as one question with ordered answers, not four separate cards. */
 function ScaleChooser({ name, value, onChange, options }: {
   name: string;
   value: number;
@@ -16,25 +19,45 @@ function ScaleChooser({ name, value, onChange, options }: {
   options: { value: number; label: string; hint: string }[];
 }) {
   return (
-    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4" role="radiogroup" aria-label={name}>
-      {options.map((o) => (
+    <div className="grid grid-cols-2 overflow-hidden rounded border border-line-strong sm:grid-cols-4" role="radiogroup" aria-label={name}>
+      {options.map((o, index) => (
         <button
           type="button"
           role="radio"
           aria-checked={value === o.value}
           key={o.value}
           onClick={() => onChange(o.value)}
-          className={`rounded-lg border px-3 py-2 text-left transition ${
-            value === o.value
-              ? "border-[var(--accent)] bg-[var(--accent-soft)] ring-1 ring-[var(--accent)]"
-              : "border-slate-200 bg-white hover:border-slate-300"
+          className={`relative border-line px-3 py-2 text-left transition-colors ${index % 2 ? "border-l" : ""} ${
+            index > 1 ? "border-t sm:border-t-0" : ""} ${index === 2 ? "sm:border-l" : ""} ${
+            value === o.value ? "bg-brand-soft shadow-[inset_0_-2px_0_var(--c-brand)]" : "bg-surface hover:bg-sunken"
           }`}
         >
-          <div className="text-sm font-medium text-slate-800">{o.label}</div>
-          <div className="text-xs text-slate-500">{o.hint}</div>
+          <div className="flex items-baseline gap-1.5">
+            <span className={`font-mono text-[11px] ${value === o.value ? "text-brand" : "text-faint"}`}>{o.value}</span>
+            <span className="text-[13.5px] font-medium text-fg">{o.label}</span>
+          </div>
+          <div className="text-[12px] text-muted">{o.hint}</div>
         </button>
       ))}
     </div>
+  );
+}
+
+/** "Your description suggests …" under a scale, only when it differs from the current choice. */
+function ScaleHint({ level, reason, current, options, onUse }: {
+  level: number | null;
+  reason: string | null;
+  current: number;
+  options: { value: number; label: string }[];
+  onUse: (v: number) => void;
+}) {
+  if (level === null || level === current) return null;
+  const label = options.find((o) => o.value === level)?.label ?? level;
+  return (
+    <p className="hint">
+      Your description suggests <strong>{label}</strong> ({reason}){" "}
+      <button type="button" className="link" onClick={() => onUse(level)}>Use it</button>
+    </p>
   );
 }
 
@@ -51,6 +74,16 @@ export function ReportIncidentPage() {
   const [affected, setAffected] = useState(1);
   const [suggestions, setSuggestions] = useState<CategorySuggestion[]>([]);
   const [similar, setSimilar] = useState<IncidentLink[]>([]);
+  const [tips, setTips] = useState<SelfHelpTip[]>([]);
+  const [severity, setSeverity] = useState<SeverityHint | null>(null);
+  // Voice reporting: each spoken phrase is appended to the description; the first one also becomes the title.
+  const addSpokenText = useCallback((spoken: string) => {
+    if (!spoken) return;
+    const sentence = spoken.charAt(0).toUpperCase() + spoken.slice(1);
+    setTitle((current) => current || sentence.slice(0, 200));
+    setDescription((current) => (current.trim() ? `${current.trimEnd()} ${sentence}` : sentence).slice(0, 5000));
+  }, []);
+  const voice = useSpeechRecognition(addSpokenText);
   const [blocking, setBlocking] = useState<IncidentLink[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
@@ -63,9 +96,13 @@ export function ReportIncidentPage() {
     if (text.title.trim().length < 4) {
       setSuggestions([]);
       setSimilar([]);
+      setTips([]);
+      setSeverity(null);
       return;
     }
     intelligenceApi.suggestCategory(text.title, text.description).then(setSuggestions).catch(() => setSuggestions([]));
+    intelligenceApi.suggestSeverity(text.title, text.description).then(setSeverity).catch(() => setSeverity(null));
+    intelligenceApi.selfHelp(text.title, text.description).then(setTips).catch(() => setTips([]));
     if (text.serviceId !== "") {
       intelligenceApi.checkDuplicates(text.title, text.description, text.serviceId).then(setSimilar).catch(() => setSimilar([]));
     } else {
@@ -110,17 +147,43 @@ export function ReportIncidentPage() {
     <>
       <PageHeader title="Report an incident" subtitle="Describe what is wrong. We will classify, prioritise and route it automatically." />
       <div className="grid gap-6 lg:grid-cols-3">
-        <form onSubmit={(e) => submit(e)} className="card card-body space-y-5 lg:col-span-2">
+        <form onSubmit={(e) => submit(e)} className="panel space-y-5 p-5 lg:col-span-2">
           <div>
             <label className="label" htmlFor="title">Short summary</label>
             <input id="title" className="input" required minLength={5} maxLength={200} value={title}
                    placeholder="e.g. Payment application unavailable" onChange={(e) => setTitle(e.target.value)} />
           </div>
           <div>
-            <label className="label" htmlFor="desc">What happened?</label>
+            <div className="flex items-end justify-between gap-2">
+              <label className="label" htmlFor="desc">What happened?</label>
+              {voice.supported && (
+                <button type="button" onClick={() => (voice.listening ? voice.stop() : void voice.start())} aria-pressed={voice.listening}
+                        className={`mb-1.5 inline-flex items-center gap-1.5 rounded border px-2 py-1 text-[12.5px] ${
+                          voice.listening ? "border-critical-solid bg-critical-soft text-critical" : "border-line-strong text-muted hover:text-fg"}`}>
+                  <MicIcon size={14} />
+                  {voice.listening ? "Stop dictation" : "Speak instead"}
+                </button>
+              )}
+            </div>
             <textarea id="desc" className="input min-h-32" required minLength={10} maxLength={5000} value={description}
                       placeholder="What were you doing, what did you expect, what error did you see?"
                       onChange={(e) => setDescription(e.target.value)} />
+            {voice.listening && (
+              <p className="hint" aria-live="polite">Listening… {voice.interim && <em className="text-fg">{voice.interim}</em>}</p>
+            )}
+            {voice.error && (
+              <p className="hint text-warning">
+                {voice.error}
+                {voice.offlineAvailable && (
+                  <>
+                    {" "}This browser can recognise speech on your computer instead.{" "}
+                    <button type="button" className="link" disabled={voice.installing} onClick={() => void voice.installOffline()}>
+                      {voice.installing ? "Downloading offline speech…" : "Download offline speech (one time)"}
+                    </button>
+                  </>
+                )}
+              </p>
+            )}
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
@@ -147,12 +210,16 @@ export function ReportIncidentPage() {
             </div>
           </div>
           <div>
-            <span className="label">Who is affected? (impact)</span>
+            <span className="label">Who is affected?</span>
             <ScaleChooser name="Impact" value={impact} onChange={setImpact} options={IMPACT_OPTIONS} />
+            <ScaleHint level={severity?.impact ?? null} reason={severity?.impact_reason ?? null} current={impact}
+                       options={IMPACT_OPTIONS} onUse={setImpact} />
           </div>
           <div>
             <span className="label">How urgent is it?</span>
             <ScaleChooser name="Urgency" value={urgency} onChange={setUrgency} options={URGENCY_OPTIONS} />
+            <ScaleHint level={severity?.urgency ?? null} reason={severity?.urgency_reason ?? null} current={urgency}
+                       options={URGENCY_OPTIONS} onUse={setUrgency} />
           </div>
           <div className="max-w-xs">
             <label className="label" htmlFor="affected">Roughly how many people are affected?</label>
@@ -161,13 +228,13 @@ export function ReportIncidentPage() {
           </div>
 
           {blocking && (
-            <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900" role="alert">
-              <p className="font-medium">You reported something almost identical a few minutes ago:</p>
-              <ul className="mt-2 list-disc pl-5">
+            <div className="rounded-r border-l-[3px] border-l-warning-solid bg-warning-soft p-4 text-[13px] text-fg" role="alert">
+              <p className="font-semibold">You reported something almost identical a few minutes ago:</p>
+              <ul className="mt-2 space-y-1">
                 {blocking.map((m) => (
                   <li key={m.incident_id}>
-                    <Link className="link" to={`/incidents/${m.incident_id}`}>{m.number}</Link> {m.title}
-                    {" "}({Math.round(m.similarity * 100)}% similar)
+                    <Link className="link mono" to={`/incidents/${m.incident_id}`}>{m.number}</Link> {m.title}
+                    {" "}<span className="text-muted">({Math.round(m.similarity * 100)}% similar)</span>
                   </li>
                 ))}
               </ul>
@@ -187,31 +254,47 @@ export function ReportIncidentPage() {
         </form>
 
         <aside className="space-y-4">
+          {tips.length > 0 && (
+            <Card title="Try this first">
+              <p className="mb-3 text-[12.5px] text-muted">These fixes solved similar problems before. If one works, you don't need to submit.</p>
+              <ul className="space-y-3">
+                {tips.map((t, index) => (
+                  <li key={index} className="text-[13px]">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span className="text-muted">{t.title}</span>
+                      <span className="shrink-0 font-mono text-[11.5px] text-muted">{Math.round(t.similarity * 100)}%</span>
+                    </div>
+                    <p className="mt-1 border-l-2 border-ok-solid pl-3 text-fg">{t.resolution}</p>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          )}
           <Card title="Is it already reported?">
             {serviceId === "" || title.trim().length < 4 ? (
-              <p className="text-sm text-slate-500">Choose a service and type a summary to check for similar open incidents.</p>
+              <p className="text-[13px] text-muted">Choose a service and type a summary to check for similar open incidents.</p>
             ) : similar.length === 0 ? (
-              <p className="text-sm text-slate-500">No similar open incidents on this service in the last 24 hours.</p>
+              <p className="text-[13px] text-muted">No similar open incidents on this service in the last 24 hours.</p>
             ) : (
               <ul className="space-y-3">
                 {similar.map((m) => (
-                  <li key={m.incident_id} className="text-sm">
+                  <li key={m.incident_id} className="text-[13px]">
                     <div className="flex items-center justify-between gap-2">
-                      <Link className="link font-mono text-xs" to={`/incidents/${m.incident_id}`}>{m.number}</Link>
-                      <span className="text-xs text-slate-500">{Math.round(m.similarity * 100)}% similar</span>
+                      <Link className="link mono" to={`/incidents/${m.incident_id}`}>{m.number}</Link>
+                      <span className="font-mono text-[11.5px] text-muted">{Math.round(m.similarity * 100)}%</span>
                     </div>
-                    <p className="text-slate-800">{m.title}</p>
+                    <p className="text-fg">{m.title}</p>
                     <StatusBadge status={m.status} />
                   </li>
                 ))}
-                <li className="text-xs text-slate-500">
+                <li className="border-t border-line pt-3 text-[12px] text-muted">
                   You can still submit: your report will be linked to these so the technician sees the full picture.
                 </li>
               </ul>
             )}
           </Card>
           <Card title="What happens next">
-            <ol className="list-decimal space-y-1 pl-5 text-sm text-slate-600">
+            <ol className="space-y-2 text-[13px] text-muted [counter-reset:step] [&>li]:relative [&>li]:pl-6 [&>li]:[counter-increment:step] [&>li]:before:absolute [&>li]:before:left-0 [&>li]:before:font-mono [&>li]:before:text-[11.5px] [&>li]:before:text-faint [&>li]:before:content-[counter(step,decimal-leading-zero)]">
               <li>Priority is calculated from impact, urgency and how critical the service is.</li>
               <li>The matching SLA sets response and resolution deadlines.</li>
               <li>A suitable technician is assigned and notified.</li>

@@ -5,7 +5,7 @@ import { PriorityBadge, RiskBadge } from "../../components/badges";
 import { BarList, Stars, TrendChart } from "../../components/charts";
 import { IncidentTable } from "../../components/IncidentTable";
 import { useToast } from "../../components/Toasts";
-import { Card, ErrorMessage, PageHeader, Spinner, StatCard } from "../../components/ui";
+import { Card, ErrorMessage, PageHeader, Spinner, Stat, StatStrip } from "../../components/ui";
 import { useLiveEvents, useLiveRefresh } from "../../hooks/LiveEvents";
 import { useAsync } from "../../hooks/useAsync";
 import { formatMinutes, formatTime, PRIORITY_LABEL, STATUS_LABEL, titleCase } from "../../lib/format";
@@ -13,21 +13,34 @@ import { formatMinutes, formatTime, PRIORITY_LABEL, STATUS_LABEL, titleCase } fr
 function LiveFeed() {
   const { recent, connected } = useLiveEvents();
   return (
-    <Card title="Live activity" actions={<span className={`text-xs ${connected ? "text-emerald-600" : "text-slate-400"}`}>{connected ? "● streaming" : "○ reconnecting"}</span>}>
-      {recent.length === 0 && <p className="text-sm text-slate-500">Events appear here the moment they happen (SSE).</p>}
-      <ul className="max-h-96 space-y-2 overflow-y-auto">
+    <Card title="Live activity" flush
+          actions={<span className="flex items-center gap-1.5 text-[12px] text-muted">
+            <span className={`h-1.5 w-1.5 rounded-full ${connected ? "bg-ok-solid" : "bg-faint"}`} />
+            {connected ? "streaming" : "reconnecting"}
+          </span>}>
+      {recent.length === 0 && <p className="p-4 text-[13px] text-muted">Events appear here the moment they happen (server-sent events).</p>}
+      <ul className="max-h-[30rem] divide-y divide-line overflow-y-auto">
         {recent.map((e, index) => (
-          <li key={`${e.at}-${index}`} className="text-sm">
-            <span className="mr-2 text-xs text-slate-400 tabular-nums">{formatTime(e.at)}</span>
-            <Link className="link font-mono text-xs" to={`/incidents/${e.incident_id}`}>{e.number}</Link>{" "}
-            <span className="text-xs font-semibold text-slate-600">{titleCase(e.action)}</span>
-            <p className="text-slate-600">{e.description}</p>
+          <li key={`${e.at}-${index}`} className="px-4 py-2 text-[13px]">
+            <div className="flex items-baseline gap-2">
+              <span className="font-mono text-[11.5px] text-faint tabular-nums">{formatTime(e.at)}</span>
+              <Link className="link mono" to={`/incidents/${e.incident_id}`}>{e.number}</Link>
+              <span className="text-[12px] font-medium text-fg">{titleCase(e.action)}</span>
+            </div>
+            <p className="text-muted">{e.description}</p>
           </li>
         ))}
       </ul>
     </Card>
   );
 }
+
+const PRIORITY_BAR: Record<string, string> = {
+  P1: "bg-critical-solid",
+  P2: "bg-critical-solid/50",
+  P3: "bg-warning-solid",
+  P4: "bg-line-strong",
+};
 
 export function AdminDashboardPage() {
   const toast = useToast();
@@ -60,67 +73,80 @@ export function AdminDashboardPage() {
     <>
       <PageHeader title="Operations dashboard" subtitle="Live view of incidents, SLA compliance and risk across all services."
                   actions={<button className="btn-secondary" onClick={runCheck}>Run SLA check now</button>} />
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
-        <StatCard label="Total incidents" value={o.total} />
-        <StatCard label="Open" value={o.open} hint={`${o.unassigned} unassigned`} tone={o.unassigned ? "warning" : "default"} />
-        <StatCard label="Critical open" value={o.critical_open} tone={o.critical_open ? "danger" : "default"} hint="P1 incidents" />
-        <StatCard label="Resolved" value={o.resolved} hint={`${o.closed} closed`} tone="success" />
-        <StatCard label="SLA violations" value={o.sla_violations} tone="danger" hint={`${o.breached_open} open & breached, ${o.at_risk} at risk`} />
-        <StatCard label="MTTR" value={o.mttr_hours !== null ? `${o.mttr_hours} h` : "—"}
-                  hint={o.avg_rating !== null ? <>Satisfaction <Stars rating={Math.round(o.avg_rating)} /> {o.avg_rating}</> : "no feedback yet"} />
-      </div>
 
-      <div className="mt-6 grid items-start gap-6 lg:grid-cols-3">
-        <div className="space-y-6 lg:col-span-2">
-          <Card title="Incidents created vs resolved (14 days)">
-            {trends.data ? <TrendChart points={trends.data} /> : <Spinner />}
-          </Card>
-          <Card title="SLA risk (likely to breach)" 
-                actions={<Link className="link text-sm" to="/admin/sla">SLA report →</Link>}>
-            {risks.data?.length === 0 && <p className="text-sm text-slate-500">Nothing at risk right now.</p>}
+      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="min-w-0 space-y-6">
+          <Card title={<h2 className="flex items-center gap-2 text-[13.5px]"><span className="h-2 w-2 bg-critical-solid" />Likely to breach</h2>} flush
+                actions={<Link className="link" to="/admin/sla">SLA report</Link>}>
+            {!risks.data && !risks.error && <div className="px-4"><Spinner /></div>}
+            {risks.data?.length === 0 && <p className="p-4 text-[13px] text-muted">Nothing at risk right now.</p>}
             {risks.data && risks.data.length > 0 && (
-              <table className="data-table">
-                <thead><tr><th>Incident</th><th>Priority</th><th>Risk</th><th>Target</th><th>Why</th></tr></thead>
-                <tbody>
-                  {risks.data.slice(0, 8).map((r) => (
-                    <tr key={r.incident_id}>
-                      <td>
-                        <Link className="link font-mono text-xs" to={`/incidents/${r.incident_id}`}>{r.number}</Link>
-                        <div className="text-slate-800">{r.title}</div>
-                      </td>
-                      <td><PriorityBadge priority={r.priority} /></td>
-                      <td><RiskBadge level={r.level} /><div className="text-xs text-slate-400">score {r.risk_score}</div></td>
-                      <td className="text-xs whitespace-nowrap">
-                        {r.target.toLowerCase()}<br />
-                        {r.minutes_left >= 0 ? `${formatMinutes(r.minutes_left)} left` : <span className="text-rose-600">{formatMinutes(-r.minutes_left)} over</span>}
-                      </td>
-                      <td className="text-xs text-slate-500">{r.reasons.join(" · ")}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <div className="overflow-x-auto">
+                <table className="data-table">
+                  <thead><tr><th>Incident</th><th>Priority</th><th>Risk</th><th>Target</th><th>Why</th></tr></thead>
+                  <tbody>
+                    {risks.data.slice(0, 8).map((r) => (
+                      <tr key={r.incident_id}>
+                        <td className="min-w-48">
+                          <Link className="link mono" to={`/incidents/${r.incident_id}`}>{r.number}</Link>
+                          <div className="text-fg">{r.title}</div>
+                        </td>
+                        <td><PriorityBadge priority={r.priority} /></td>
+                        <td>
+                          <RiskBadge level={r.level} />
+                          <div className="mt-0.5 font-mono text-[11px] text-faint">score {r.risk_score}</div>
+                        </td>
+                        <td className="text-[12.5px] whitespace-nowrap tabular-nums">
+                          <span className="text-muted">{r.target.toLowerCase()}</span><br />
+                          {r.minutes_left >= 0
+                            ? `${formatMinutes(r.minutes_left)} left`
+                            : <span className="font-medium text-critical">{formatMinutes(-r.minutes_left)} over</span>}
+                        </td>
+                        <td className="min-w-56 text-[12px] text-muted">{r.reasons.join(" · ")}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </Card>
-        </div>
-        <div className="space-y-6">
-          <Card title="Open incidents by priority">
-            <BarList items={ALL_PRIORITIES.map((p) => ({
-              label: PRIORITY_LABEL[p], value: o.by_priority_open[p] ?? 0,
-              colour: p === "P1" ? "bg-rose-500" : p === "P2" ? "bg-orange-400" : p === "P3" ? "bg-yellow-400" : "bg-slate-400",
-            }))} />
-            <h3 className="mt-6 mb-3">By status</h3>
-            <BarList items={Object.entries(o.by_status).map(([s, v]) => ({ label: STATUS_LABEL[s as keyof typeof STATUS_LABEL], value: v ?? 0 }))} />
+
+          <Card title={<h2 className="flex items-center gap-2 text-[13.5px]"><span className="h-2 w-2 bg-warning-solid" />Waiting for a technician</h2>} flush
+                actions={<Link className="link" to="/incidents?unassigned=true&open_only=true">View all</Link>}>
+            {unassigned.data ? (
+              <IncidentTable incidents={unassigned.data.items} columns={["service", "reporter", "due"]} empty="Every open incident has a technician" />
+            ) : <div className="px-4"><Spinner /></div>}
           </Card>
-          <LiveFeed />
         </div>
+        <LiveFeed />
       </div>
 
-      <Card title="Unassigned incidents" className="mt-6"
-            actions={<Link className="link text-sm" to="/incidents?unassigned=true&open_only=true">View all →</Link>}>
-        {unassigned.data ? (
-          <IncidentTable incidents={unassigned.data.items} columns={["service", "reporter", "due"]} empty="Every open incident has a technician" />
-        ) : <Spinner />}
-      </Card>
+      <div className="mt-6">
+        <StatStrip columns={6}>
+          <Stat label="Total incidents" value={o.total} />
+          <Stat label="Open" value={o.open} hint={`${o.unassigned} unassigned`} tone={o.unassigned ? "warning" : "default"} />
+          <Stat label="Critical open" value={o.critical_open} tone={o.critical_open ? "danger" : "default"} hint="P1 incidents" />
+          <Stat label="Resolved" value={o.resolved} hint={`${o.closed} closed`} />
+          <Stat label="SLA violations" value={o.sla_violations} tone={o.sla_violations ? "danger" : "default"}
+                hint={`${o.breached_open} open & breached · ${o.at_risk} at risk`} />
+          <Stat label="Mean time to resolve" value={o.mttr_hours !== null ? `${o.mttr_hours} h` : "—"}
+                hint={o.avg_rating !== null ? <span className="inline-flex items-center gap-1.5"><Stars rating={Math.round(o.avg_rating)} size={11} />{o.avg_rating}</span> : "no feedback yet"} />
+        </StatStrip>
+      </div>
+
+      <div className="mt-6 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <Card title="Created vs resolved, last 14 days">
+          {trends.data ? <TrendChart points={trends.data} /> : <Spinner />}
+        </Card>
+        <Card title="Open incidents by priority">
+          <BarList items={ALL_PRIORITIES.map((p) => ({
+            label: PRIORITY_LABEL[p], value: o.by_priority_open[p] ?? 0, colour: PRIORITY_BAR[p],
+          }))} />
+          <h3 className="mt-6 mb-3">All incidents by status</h3>
+          <BarList colour="bg-line-strong"
+                   items={Object.entries(o.by_status).map(([s, v]) => ({ label: STATUS_LABEL[s as keyof typeof STATUS_LABEL], value: v ?? 0 }))} />
+        </Card>
+      </div>
     </>
   );
 }

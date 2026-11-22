@@ -238,6 +238,14 @@ class TextPreview(ApiModel):
     service_id: int | None = None
 
 
+class SelfHelpTip(ApiModel):
+    """A past fix shown to a reporter; no incident id or number, since employees cannot open others' incidents."""
+
+    title: str
+    resolution: str
+    similarity: float
+
+
 class AssignRequest(ApiModel):
     technician_id: int
 

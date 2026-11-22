@@ -157,6 +157,8 @@ SCENARIOS: list[Scenario] = [
     S(190, "vikram", "GW", "CLOUD", 3, 3, 60, "Gateway pods restarting with OOM", "API gateway pods restart repeatedly with out-of-memory errors in the cluster.", "closed", late=True),
     S(170, "zoya", "WIKI", "APPLICATION", 1, 1, 5, "Wiki search returns no results", "Searching the intranet wiki returns no results for any term.", "closed"),
     S(160, "karan", "NET", "NETWORK", 3, 4, 150, "Office wifi drops in building B", "The wifi in building B drops every few minutes for everyone on floors 3-5.", "closed"),
+    # recurring problem: the VPN drop-outs (300 h, here, and the open one at 4 h) keep coming back
+    S(150, "karan", "VPN", "NETWORK", 2, 3, 15, "VPN keeps disconnecting remote staff", "Remote staff are disconnected from the VPN every few minutes again.", "closed"),
     S(140, "isha", "EMAIL", "SECURITY", 3, 3, 25, "Phishing email impersonating CEO", "Several staff received a suspicious email asking for gift cards, apparently from the CEO.", "closed"),
     S(120, "riya", "HR", "AUTHENTICATION", 1, 2, 1, "Cannot sign in to HR portal", "SSO login to the HR portal loops back to the sign in page.", "closed"),
     S(110, "aman", "ENDPT", None, 1, 2, 1, "External monitor not detected on docking station", "My second monitor is not detected when the laptop is on the docking station.", "verified"),

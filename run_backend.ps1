@@ -20,4 +20,5 @@ if (-not (Test-Path ".env")) {
 
 & ".\.venv\Scripts\alembic.exe" upgrade head
 if ($LASTEXITCODE -ne 0) { throw "alembic upgrade failed" }
-& ".\.venv\Scripts\uvicorn.exe" app.main:create_app --factory --reload --host 127.0.0.1 --port 8000
+# Live-update (SSE) streams never end on their own; without a shutdown timeout a code reload waits for them forever.
+& ".\.venv\Scripts\uvicorn.exe" app.main:create_app --factory --reload --timeout-graceful-shutdown 3 --host 127.0.0.1 --port 8000

@@ -1,9 +1,11 @@
+from dataclasses import replace
 from datetime import datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Response, status
 
 from app.api import presenters
+from app.api.csv_export import csv_response
 from app.api.presenters import Directory
 from app.api.schemas import (
     AnswerRequest,
@@ -16,8 +18,10 @@ from app.api.schemas import (
     FeedbackRequest,
     IncidentCreate,
     IncidentDetailOut,
+    IncidentSummaryOut,
     IncidentUpdate,
     QuestionRequest,
+    Ref,
     ReopenRequest,
     ResolveRequest,
     SearchPageOut,
@@ -29,10 +33,11 @@ from app.domain.enums import IncidentStatus, Permission, Priority, SLAStatus
 from app.domain.exceptions import InvalidInputError
 from app.domain.factories import NewIncidentData
 from app.domain.incident import Incident
-from app.domain.search import SearchCriteria, SortOrder
+from app.domain.search import MAX_PAGE_SIZE, SearchCriteria, SortOrder
 from app.domain.users import User
 from app.intelligence.recommender import Recommendation
 from app.intelligence.resolution_suggester import SuggestedResolution
+from app.intelligence.resolution_time import ResolutionEstimate
 
 router = APIRouter(prefix="/api/incidents", tags=["incidents"])
 Staff = Annotated[User, Depends(require(Permission.VIEW_ALL_INCIDENTS))]
@@ -68,10 +73,7 @@ def report_incident(
     return _detail(container, container.incidents.report(user, data, force=body.force), user)
 
 
-@router.get("", response_model=SearchPageOut)
-def search_incidents(
-    user: CurrentUser,
-    container: Container,
+def search_criteria(
     number: str | None = None,
     q: Annotated[str | None, Query(max_length=200)] = None,
     status_: Annotated[list[IncidentStatus] | None, Query(alias="status")] = None,
@@ -88,8 +90,9 @@ def search_incidents(
     sort: SortOrder = SortOrder.NEWEST,
     page: Annotated[int, Query(ge=1)] = 1,
     page_size: Annotated[int, Query(ge=1, le=100)] = 20,
-) -> SearchPageOut:
-    criteria = SearchCriteria(
+) -> SearchCriteria:
+    """Query parameters -> search value object; shared by the list and the CSV export so they never drift apart."""
+    return SearchCriteria(
         incident_id=_parse_number(number),
         text=q,
         statuses=tuple(status_ or ()),
@@ -107,6 +110,17 @@ def search_incidents(
         page=page,
         page_size=page_size,
     )
+
+
+Criteria = Annotated[SearchCriteria, Depends(search_criteria)]
+EXPORT_COLUMNS = (
+    "Number", "Title", "Status", "Priority", "Priority score", "Category", "Service", "Reporter", "Technician",
+    "SLA status", "Response due", "Resolution due", "Escalation level", "Created", "Last update",
+)
+
+
+@router.get("", response_model=SearchPageOut)
+def search_incidents(user: CurrentUser, container: Container, criteria: Criteria) -> SearchPageOut:
     result = container.search.search(user, criteria)
     directory, now = Directory(container.uow), container.clock.now()
     return SearchPageOut(
@@ -115,6 +129,31 @@ def search_incidents(
         page=result.page,
         page_size=result.page_size,
         pages=result.pages,
+    )
+
+
+@router.get("/export.csv", response_class=Response)
+def export_incidents(user: CurrentUser, container: Container, criteria: Criteria) -> Response:
+    """Every incident matching the filters (all pages), with the same visibility rules as the search."""
+    directory, now = Directory(container.uow), container.clock.now()
+    rows, page = [], 1
+    while True:
+        result = container.search.search(user, replace(criteria, page=page, page_size=MAX_PAGE_SIZE))
+        rows += [_export_row(presenters.incident_summary(i, directory, now)) for i in result.items]
+        if page >= result.pages:
+            break
+        page += 1
+    return csv_response(f"incidents-{now:%Y%m%d-%H%M}.csv", EXPORT_COLUMNS, rows)
+
+
+def _export_row(s: IncidentSummaryOut) -> tuple[object, ...]:
+    def name(ref: Ref | None) -> str | None:
+        return ref.name if ref else None
+
+    return (
+        s.number, s.title, s.status, s.priority, s.priority_score, name(s.category), name(s.service),
+        name(s.reporter), name(s.technician), s.sla_status, s.response_due_at, s.resolution_due_at,
+        s.escalation_level, s.created_at, s.updated_at,
     )
 
 
@@ -210,6 +249,12 @@ def audit_trail(incident_id: int, user: CurrentUser, container: Container) -> li
 @router.get("/{incident_id}/recommendations", response_model=list[Recommendation])
 def recommendations(incident_id: int, user: Staff, container: Container) -> list[Recommendation]:
     return container.intelligence.recommend_technicians(container.incidents.get(incident_id, user), user)
+
+
+@router.get("/{incident_id}/resolution-estimate", response_model=ResolutionEstimate | None)
+def resolution_estimate(incident_id: int, user: CurrentUser, container: Container) -> ResolutionEstimate | None:
+    """Anyone who may view the incident (incl. its reporter) sees the typical time to resolve."""
+    return container.intelligence.estimate_resolution(container.incidents.get(incident_id, user))
 
 
 @router.get("/{incident_id}/suggested-resolutions", response_model=list[SuggestedResolution])

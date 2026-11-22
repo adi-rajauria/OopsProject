@@ -13,7 +13,11 @@ Code lives in `backend/app/intelligence/` (pure Python, plus scikit-learn behind
 | 4 | Automatic escalation chain | `intelligence/escalation.py` + `services/escalation_service.py` | background monitor |
 | 5 | Category suggestion | `intelligence/category_classifier.py` | report form, auto-fill when no category is chosen |
 | + | Service correlation (innovation) | `intelligence/correlation.py` | dependency graph view |
-| + | Suggested resolutions (spec G) | `intelligence/resolution_suggester.py` | incident page (staff) |
+| + | Suggested resolutions (spec G) | `intelligence/resolution_suggester.py` | incident page (staff); "Try this first" on the report form (self-service) |
+| + | Voice reporting (innovation) | `frontend/src/hooks/useSpeechRecognition.ts` | report form, "Speak instead"; the spoken text then feeds the category, severity, duplicate and self-help suggestions like typed text |
+| + | Impact / urgency hints | `intelligence/severity_hints.py` | report form, under the impact and urgency scales |
+| + | Recurring problem detection | `intelligence/recurring.py` | Service health page |
+| + | Predicted resolution time | `intelligence/resolution_time.py` | incident page, Details card (everyone who can view it) |
 
 ---
 
@@ -65,13 +69,16 @@ For each active technician (except the current assignee):
 | Factor | Value in [0,1] | Weight (P3/P4) | Weight (P1/P2) |
 |---|---|---|---|
 | Skill matches incident category | 1 or 0 | 0.40 | 0.40 |
-| Free capacity | 1 − active / max workload | 0.25 | 0.15 |
+| Free capacity | 1 − active / max workload | 0.20 | 0.10 |
 | Experience | min(years, 15) / 15 | 0.15 | 0.25 |
-| History on this service | min(resolved incidents here, 5) / 5 | 0.15 | 0.15 |
+| History on this service | min(resolved incidents here, 5) / 5 | 0.10 | 0.10 |
+| Reporter ratings | (average stars − 1) / 4; 0.5 (neutral) with fewer than 2 ratings | 0.10 | 0.10 |
 | Available and under the cap | 1 or 0 | 0.05 | 0.05 |
 
 `score = 100 x Σ weight x value`. The top 3 are returned with a per-factor breakdown and readable reasons
-("has NETWORK skill · 1/8 active incidents · 10 yrs experience · resolved 4 incident(s) on this service").
+("has NETWORK skill · 1/8 active incidents · 10 yrs experience · resolved 4 incident(s) on this service · rated 4.3/5 by
+3 reporter(s)"). Ratings come from the employee feedback given at verification; the neutral value for technicians with
+fewer than 2 ratings means a new technician is neither rewarded nor punished for having no history.
 Ineligible technicians are listed last and flagged. Critical incidents shift weight from load-spreading to experience.
 The **assignment strategies** (Skill / Load / Round-robin / Experience) *decide*; the recommender *explains* and supports
 an administrator's manual choice.
@@ -129,7 +136,7 @@ Keywords are data in the `categories` table, so a category an administrator adds
 category it always wins: the audit entry notes "reporter chose it over suggested X". If they pick none, the top suggestion
 is used ("auto-suggested, confidence 0.58"). If nothing scores ≥ 0.12, the reporter is asked to choose.
 
-**Measured on the seed data:** the suggestion equals the final category for **38 of 42** incidents (90 %). The four misses
+**Measured on the seed data:** the suggestion equals the final category for **39 of 43** incidents (91 %). The four misses
 are genuinely ambiguous (e.g. "API gateway returning 502 errors": application or cloud?).
 
 ## Innovation: service dependency correlation
@@ -142,7 +149,76 @@ Over incidents still open:
   the upstream service is flagged as the likely common cause (e.g. Payments → API Gateway).
 - Node health: HOTSPOT / DEGRADED (any open incident) / HEALTHY, plus edges for the graph view.
 
+## Impact / urgency hints
+
+Priority depends on the impact and urgency the employee picks, and people rate the same outage differently. While they
+type, a rule table suggests a level for each scale from phrases in the title and description:
+
+| Level | Impact phrases (examples) | Urgency phrases (examples) |
+|---|---|---|
+| 4 | all users / customers / regions, everyone, whole company | cannot pay, outage, unavailable, is down, breach, transactions fail |
+| 3 | whole department / floor / building, multiple floors, nobody can | blocked, cannot work, urgent, deadline, stopped working, keeps dropping |
+| 2 | colleagues, several people, a few users, my team | slow, intermittent, sometimes, delayed |
+| 1 | only me, just me, my laptop / keyboard / account | workaround, no rush, cosmetic, minor |
+
+The **highest** matching level wins (so "all customers ... slow" is still impact 4), and the matched phrase is the reason:
+"Your description suggests **Organisation** (mentions "all customers") · Use it". The hint is shown only when it differs
+from the current choice, and the employee's choice is what gets submitted. **Why rules and not ML:** severity words are
+few and well known, rules are predictable and explainable in one sentence, and there is no labelled training data.
+**Measured on the seed:** a hint appears for 9 of 43 reports (impact) and 12 of 43 (urgency), and every hint is within
+one level of what the reporter chose (3 / 8 exact). "nobody can" was moved from 4 to 3 after it over-rated a team file
+share.
+
+## Recurring problem detection
+
+The spec lists "difficulty identifying recurring problems" as a challenge. Duplicate detection and the hotspot look at
+the last 24 h / 2 h, so they catch a **burst**. This feature catches a problem that **keeps coming back** after being fixed.
+
+```
+window      = incidents (any status) created in the last 30 days, grouped per service
+same issue  = TF-IDF similarity (same char n-grams as feature 1) >= 0.25 between two incidents
+groups      = connected components of "same issue" (single-link, computed with union-find),
+              so A~B and B~C put A, B and C in one group
+recurring   = group of >= 3 incidents whose first and last are >= 24 h apart
+sorted by   = still-open incidents, then occurrences, then most recent
+```
+
+Each result shows the service, the latest title, how many times it happened and how many are still open, the date
+range, the **latest fix** and a reason, e.g. "3 similar incidents on Corporate VPN within 12 day(s); it was fixed before
+but came back (1 still open)".
+
+**Calibration on the seed data:** at 0.20 three different database problems (connections, replication lag,
+deadlocks) were wrongly grouped; at 0.35 the real VPN drop-outs were missed; 0.25 and 0.30 find exactly the VPN
+problem and leave the unrelated "VPN client update fails" out. Without the 24 h rule, today's payment outage (4 reports in
+minutes) would also show, but that is a burst the hotspot already reports.
+**Cost:** one TF-IDF fit per incident within a service (O(n²) comparisons per service), which is fine for 30 days of
+one service's incidents; at much larger volumes it would run as a nightly batch job instead.
+
 ## Suggested resolutions (spec feature G)
 
 The same TF-IDF similarity is used against **resolved** incidents that have a resolution summary. Matches with similarity
 ≥ 0.15 are shown (top 3), together with the fix that worked.
+
+**Self-service (deflection).** The same search runs on the text an employee is still typing in the report form
+(`POST /api/intelligence/self-help`, debounced). The "Try this first" card shows the past title, the fix and the similarity,
+so the employee can solve it without submitting. Incident ids and numbers are left out because employees cannot open
+other people's incidents. Example: typing "VPN keeps disconnecting" shows "Replaced a flapping uplink on the access
+switch…" at 59 %.
+
+## Predicted resolution time
+
+```
+working time = resolved_at - created_at - time paused in PENDING_INFO      (waiting on the reporter is not work)
+basis        = resolved incidents with the same priority AND category       if there are >= 3
+               else resolved incidents with the same priority               if there are >= 3
+               else no estimate
+estimate     = median working time of the basis
+expected by  = created_at + estimate + completed pauses                      (open incidents only)
+```
+
+**Why the median:** a few very late incidents (the seed has deliberate SLA violations) would pull an average far up; the
+median is the "usual" case and is easy to explain. **Why 3 samples:** below that, one incident would be presented as a
+trend. Shown on the incident page as "Typical time to resolve ~1.4 h · expected around 14:05", with the reason
+("median of 5 resolved P2 incidents"). If an open incident is already past the expected time, the page says "taking
+longer than usual" instead. While it is waiting on the reporter, no expected time is shown, because the clock is paused.
+It complements the SLA, which says what was promised; the estimate says what usually happens.

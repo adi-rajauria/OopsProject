@@ -24,10 +24,11 @@ export function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
+// Toasts sit on the surface colour; only the left rule carries the tone.
 const TONE_CLASSES: Record<Tone, string> = {
-  success: "border-emerald-200 bg-emerald-50 text-emerald-800",
-  error: "border-rose-200 bg-rose-50 text-rose-800",
-  info: "border-sky-200 bg-sky-50 text-sky-800",
+  success: "border-l-ok-solid",
+  error: "border-l-critical-solid",
+  info: "border-l-brand",
 };
 
 export function ToastProvider({ children }: { children: ReactNode }) {
@@ -53,7 +54,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           <div
             key={t.id}
             role={t.tone === "error" ? "alert" : "status"}
-            className={`pointer-events-auto rounded-lg border px-4 py-3 text-sm shadow-lg ${TONE_CLASSES[t.tone]}`}
+            className={`pointer-events-auto rounded border border-line border-l-[3px] bg-surface px-4 py-2.5 text-[13px] text-fg shadow-pop ${TONE_CLASSES[t.tone]}`}
           >
             {t.message}
           </div>

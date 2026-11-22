@@ -1,6 +1,9 @@
 # Test cases
 
-Run: `cd backend && .venv/bin/pytest` (99 test functions, 158 cases with parametrisation; about 20 s, mostly the seeded API tests).
+Run: `cd backend && .venv/bin/pytest` (107 test functions, 171 cases with parametrisation; about 20 s, mostly the seeded API tests).
+CI (`.github/workflows/ci.yml`, GitHub Actions) runs on every push and pull request: the whole suite on SQLite and again on
+a PostgreSQL 18 service container, plus `alembic upgrade head` and the seed script on a fresh PostgreSQL database, and the
+frontend type-check + build.
 Types: **N** normal operation · **B** boundary · **I** invalid input · **E** exception · **A** authorization · **R** business rule · **S** state transition.
 
 Fixture world (`tests/conftest.py`): services PAY (criticality 4), MAIL (3), WIKI (1); categories APPLICATION, NETWORK, DATABASE, HARDWARE;
@@ -108,7 +111,13 @@ Clock fixed at 2026-11-16 10:00 UTC and advanced explicitly.
 | TC-75 | Escalation level boundaries (7 cases) | P1, 0 / 0.02 / 4.9 / 5 / 10 / 15 / 99 min after due | 0, 1, 1, 2, 3, 4, 4 | B |
 | TC-76 | Escalation applicability | unacked P1, P2, acknowledged P1; P2 enabled | 4 named steps; P2 and acked none; P2 escalates when enabled | R |
 | TC-77 | Correlation | 3 recent VPN incidents, 1 on Network (VPN depends on it), 1 old Wiki | VPN HOTSPOT, Network upstream cause, edges, Wiki DEGRADED | N |
-| TC-78 | Suggested resolutions | VPN incident vs resolved VPN, resolved printer, open VPN | only the resolved VPN fix returned | N |
+| TC-78 | Suggested resolutions + self-service on typed text | VPN incident vs resolved VPN, resolved printer, open VPN; then text "VPN keeps disconnecting" and "Coffee machine is empty" | only the resolved VPN fix returned (both times); nothing for the coffee text | N |
+| TC-104 | Impact / urgency hints per level (5 cases) | "All customers cannot pay"; "whole department is blocked before the deadline"; "a few colleagues ... intermittently"; "Only me: a cosmetic issue"; "Not sure what is happening" | (4,4), (3,3), (2,2), (1,1), no hint and no reason | N/B |
+| TC-105 | Hint explains itself | "Payment application unavailable. Users are unable to complete transactions" | urgency 4 with reason `mentions "unable to complete transactions"`; no impact hint ("users" alone says nothing about how many) | N |
+| TC-103 | Recommendation uses reporter ratings | two identical NETWORK technicians rated 2.0 (x3) and 4.8 (x5); then one with a single 5-star rating | 4.8-rated first, reason "rated 4.8/5 by 5 reporter(s)", rating points 9.5 vs 2.5; single rating gives equal scores and "not enough ratings yet" | N/B |
+| TC-102 | Recurring problems: grouped across days, bursts and unrelated ignored | 3 VPN drop-outs over 12 days (2 fixed), unrelated printer on same service, VPN drop 45 days ago, 4 identical payment reports within minutes; then only 2 VPN | one problem: VPN, incidents newest first (3, 2, 1), 1 open, latest fix shown, reason "came back"; then none (minimum 3) | N/B/R |
+| TC-99 | Predicted resolution time: median, category basis, pauses excluded | open P2 Network incident; resolved P2 Network in 60, 90 (+600 paused), 600 min; P2 other category in 5 min | median 90 min from 3 samples, basis "P2 Network incidents", reason says 1.5 h, expected = created + 90 min | N/B |
+| TC-100 | Predicted resolution time fallback | 1 same-category + 2 other-category P2 samples; then only 2 P2 samples | falls back to "P2 incidents" (median 40); then no estimate (minimum 3 samples) | B/R |
 
 ## Phase 2: services (`tests/services/test_phase2_services.py`)
 
@@ -134,11 +143,13 @@ Clock fixed at 2026-11-16 10:00 UTC and advanced explicitly.
 |---|---|---|---|---|
 | TC-92 | Seed meets data requirements | run seeder | >= 15 users, >= 8 services, >= 40 incidents in all 8 non-transient states, violations, links and escalations > 0; reset empties DB | N |
 | TC-93 | Employee to technician flow over HTTP | report laptop issue, employee tries to acknowledge, technician works it, employee verifies | auto HARDWARE + ASSIGNED; 403; RESOLVED with "verify" offered; feedback 5; audit order; bell count > 0 | N/A |
-| TC-94 | Role guards (10 cases) | employee/technician/admin x admin, reports, intelligence, queue | 403 or 200 exactly as designed | A |
+| TC-94 | Role guards (11 cases) | employee/technician/admin x admin, reports, intelligence, queue | 403 or 200 exactly as designed | A |
 | TC-95 | Search parameters and HTTP error mapping | multi-value filters, number, own scope, number "ABC", page size 101, status "DONE"; impact 5, unknown service, no category, duplicate, force | filtered results; 422 x3; 422, 404 `SERVICE_NOT_FOUND`, 422 `INVALID_INCIDENT`, 409 `DUPLICATE_INCIDENT` with similarity >= 0.85, 201 | I/E |
-| TC-96 | Dashboards, intelligence, admin over HTTP | reports, correlation, risk, strategy switch, delete default policy, check-now, create technician | data present, PAY hotspot, ROUND_ROBIN active, 422, 200, 201 with skills | N |
+| TC-96 | Dashboards, intelligence, admin over HTTP | reports, correlation, recurring problems, risk, strategy switch, delete default policy, check-now, create technician | data present, PAY hotspot, exactly one recurring problem (Corporate VPN x3), ROUND_ROBIN active, 422, 200, 201 with skills | N |
+| TC-106 | CSV export | admin exports everything; P1 filter; employee exports; title `=HYPERLINK(...)`; SLA violations CSV as admin and as employee | text/csv attachment with all rows (more than one page); only P1 rows; only the employee's own incidents; cell becomes `'=HYPERLINK(...)`; violations with readable "... UTC" times; 403 | N/A/R |
 | TC-97 | Event stream authentication | bad token | 401 | A |
 | TC-98 | Background monitor pass | at seed time; 30 min later | no escalations; then new violations and escalations | R |
+| TC-101 | Self-service fixes, severity hint and resolution estimate over HTTP | employee types a VPN problem; empty title; "All users cannot pay"; estimate for own incident, for someone else's, admin over all incidents | tips with a fix and no incident id; 422; impact 4 + urgency 4 with reason `mentions "cannot pay"`; 200; 403; at least one estimate from >= 3 samples with a "median of" reason | N/I/A |
 
 ## Spec exception coverage
 
