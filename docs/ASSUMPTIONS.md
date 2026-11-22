@@ -97,7 +97,7 @@ Every assumption made while building Decerno, numbered so the report can cite th
 79. **Supersedes 71 (accent colour part).** All roles share one brand colour (petrol). Roles stay visibly distinct through their shell (sidebar console for technicians and administrators, top-bar portal for employees), portal name, navigation and a neutral role marker. Red, amber and green carry meaning only (priority, SLA, success).
 80. Colours are semantic CSS tokens (`bg-surface`, `text-muted`, `border-line`, `bg-brand`, `text-critical` …) defined once in `src/index.css` with light and dark values; components never use raw Tailwind palette classes.
 81. Theme follows the operating system by default; a System / Light / Dark toggle (sidebar footer, employee page footer, sign-in page) stores an explicit choice in `localStorage`, applied before first paint.
-82. Fonts are IBM Plex Sans and IBM Plex Mono, self-hosted through `@fontsource` (latin subset) so the UI looks the same offline. These are the only two new dependencies.
+82. Fonts are Domine (all text, a serif that gives Decerno its own look; latin + latin-ext subsets) and IBM Plex Mono (incident numbers and times), self-hosted through `@fontsource` so the UI looks the same offline.
 83. The nine incident states share five colour tones (waiting, active, pending info, resolved, closed); the state name is always shown as text.
 84. Icons are a small inline-SVG set (`components/icons.tsx`); no icon library.
 85. Wide tables keep horizontal scrolling on phones, inside their panel (the page itself never scrolls sideways).
