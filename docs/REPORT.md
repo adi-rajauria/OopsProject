@@ -13,6 +13,20 @@ decernō, "I decide, I settle".*
 | Demo video | `[Group No.]_OOP_S1_2025-2026_Project` |
 | Date | 22 November 2026 |
 
+### At a glance
+
+| | |
+|---|---|
+| What it is | A full-stack web application for the complete IT incident lifecycle, built around a pure object-oriented domain model |
+| Users | Employee, Technician (incl. team lead), Administrator (System Admin, IT Manager), each with its own interface |
+| Intelligence | **13** explainable intelligent / automated features (the spec asks for 2), plus a *Why Decerno decided* card on every incident |
+| Design | **7** design patterns, layered architecture, the domain has no framework imports |
+| API | **73** REST operations + a Server-Sent Events stream, documented automatically (Swagger UI) |
+| Data | PostgreSQL 18, **14** tables, migrations with Alembic, a realistic seed of 43 incidents |
+| Quality | **178** automated test cases on SQLite and PostgreSQL, CI on every push, 107 documented test cases |
+| Size | backend ~7,500 lines (88 files), frontend ~5,200 lines (42 files), tests ~1,800 lines, docs ~2,300 lines |
+| Innovation | voice input, real-time dashboard, service dependency graph with root-cause hints, predictive SLA risk, CI/CD |
+
 ---
 
 ## Contents
@@ -23,17 +37,21 @@ decernō, "I decide, I settle".*
 4. [UML diagrams](#4-uml-diagrams)
 5. [Object-oriented design](#5-object-oriented-design)
 6. [Intelligent features](#6-intelligent-features)
-7. [Technology stack](#7-technology-stack)
-8. [Technology selection report](#8-technology-selection-report)
-9. [Database design](#9-database-design)
-10. [Exception and error handling](#10-exception-and-error-handling)
-11. [Security](#11-security)
-12. [Testing](#12-testing)
-13. [Scalability and future evolution](#13-scalability-and-future-evolution)
-14. [Team and responsibilities](#14-team-and-responsibilities)
-15. [Conclusion](#15-conclusion)
+7. [User interface and experience](#7-user-interface-and-experience)
+8. [API design](#8-api-design)
+9. [Technology stack](#9-technology-stack)
+10. [Technology selection report](#10-technology-selection-report)
+11. [Database design](#11-database-design)
+12. [Exception and error handling](#12-exception-and-error-handling)
+13. [Security](#13-security)
+14. [Testing](#14-testing)
+15. [Development process](#15-development-process)
+16. [Scalability and future evolution](#16-scalability-and-future-evolution)
+17. [Known limitations](#17-known-limitations)
+18. [Team and responsibilities](#18-team-and-responsibilities)
+19. [Conclusion](#19-conclusion)
 
-Appendix A: [Spec coverage checklist](#appendix-a-spec-coverage-checklist) · Appendix B: [How to run](#appendix-b-how-to-run)
+Appendix A: [Spec coverage checklist](#appendix-a-spec-coverage-checklist) ? Appendix B: [How to run](#appendix-b-how-to-run) ? Appendix C: [Demo accounts](#appendix-c-demo-accounts)
 
 ---
 
@@ -112,7 +130,28 @@ All 99 assumptions are numbered in [`docs/ASSUMPTIONS.md`](ASSUMPTIONS.md). The 
 6. **Only a near-identical report from the same person within 30 minutes is blocked** as a duplicate (an accidental
    double submit). Similar reports from other people are linked, never blocked.
 7. **E-mail and SMS are simulated** behind adapters; real providers can be plugged in without changing other code.
-8. **Single process:** the SLA monitor and the live-update broadcaster run inside the API process (see Section 13).
+8. **Single process:** the SLA monitor and the live-update broadcaster run inside the API process (see Section 16).
+
+### 1.6 What makes Decerno different
+
+Most incident trackers are forms plus a status column. Decerno is built around **decisions**, which is what its name
+means (*decernō*, "I decide"):
+
+- **Every decision is explained.** Each incident page has a *Why Decerno decided* card that lists the category, the
+  priority formula with the actual numbers, the SLA that applies, why this technician was chosen, which reports were
+  linked and how similar they were, and the escalation chain. Nothing is a black box.
+- **Help before the ticket exists.** While an employee types, Decerno suggests the category, the impact and urgency
+  (with the phrase that triggered it), shows similar open incidents, and offers fixes that worked before. Some problems
+  are solved without a ticket; the rest arrive better described.
+- **Service-aware, not ticket-aware.** A dependency graph connects services, so Decerno can say "four payment
+  incidents in two hours: one underlying problem" and "the API Gateway that Payments depends on also has incidents".
+  It also notices problems that keep coming back over weeks.
+- **Fair SLAs.** The clock pauses while the technician waits for the reporter, and every incident shows a predicted
+  resolution time from comparable past incidents.
+- **A feedback loop.** Reporters rate the fix; ratings feed back into technician recommendations.
+- **Voice everywhere.** Incidents, notes, questions and resolutions can be dictated.
+- **Its own identity:** the name, a "D holding a tick" logo, the Domine typeface, an indigo and gold palette, and
+  incident numbers of the form `DCN-1001`.
 
 ---
 
@@ -291,7 +330,93 @@ sequenceDiagram
 - **Replaceability:** the database, the text-similarity library and the notification providers are all behind interfaces.
 - **Clarity for an OOP course:** the business rules are plain classes that can be read and explained on their own.
 - **Right size:** a modular monolith gives the benefits of separation without the operational cost of microservices,
-  and its module boundaries are the obvious places to split later (Section 13).
+  and its module boundaries are the obvious places to split later (Section 16).
+
+### 3.5 Workflow 2: investigate, SLA monitored, resolved, user notified
+
+```mermaid
+sequenceDiagram
+    actor T as Technician
+    actor E as Employee
+    participant S as IncidentService
+    participant I as Incident
+    participant ST as IncidentState
+    participant C as IncidentSLA
+    participant B as EventBus
+
+    T->>S: acknowledge(id)
+    S->>I: acknowledge(actor, now)
+    I->>ST: acknowledge()
+    ST-->>I: AcknowledgedState
+    I->>C: mark_responded(now) - response SLA met
+    S->>B: IncidentTransitioned (audit, notify, live)
+    T->>S: start_work(id), add_comment(internal note)
+    T->>S: request_info(id, question)
+    I->>ST: request_info() gives PendingInfoState
+    I->>C: pause(now) - clock stops
+    B-->>E: notification - the technician needs information
+    E->>S: provide_info(id, answer)
+    I->>C: resume(now) - deadline moved by the paused time
+    T->>S: resolve(id, summary)
+    I->>C: mark_resolved(now) - resolution SLA met or breached
+    B-->>E: notification - resolved, please verify
+    E->>S: verify(id, rating 5, comment)
+    T->>S: close(id)
+    B-->>E: notification - closed
+```
+
+Every arrow into `Incident` goes through its current `IncidentState`, so an action that is not allowed in that state
+(for example resolving an incident that was never acknowledged) raises `InvalidStateTransitionError` before anything
+changes.
+
+### 3.6 Workflow 3: multiple reports, duplicates, correlation and escalation
+
+```mermaid
+sequenceDiagram
+    actor E1 as Employee 1
+    actor E2 as Employee 2
+    participant S as IncidentService
+    participant D as DuplicateDetector
+    participant R as IncidentCorrelator
+    participant M as SLAMonitor (every 60 s)
+    participant X as EscalationService
+    actor A as Administrator
+
+    E1->>S: report "Payment application unavailable"
+    S->>D: similar open incidents on Payments (24 h)?
+    D-->>S: DCN-1035 at 0.91 - DUPLICATE
+    S-->>E1: created, linked as duplicate (parent DCN-1035)
+    E2->>S: report "Unable to make payment"
+    S->>D: similar?
+    D-->>S: DCN-1037 at 0.67 - RELATED
+    A->>R: open Service health
+    R-->>A: HOTSPOT Payments (4 in 2 h), UPSTREAM CAUSE API Gateway
+    loop every 60 seconds
+        M->>X: unacknowledged P1 past its response deadline?
+        X-->>M: next level (Technician, Team Lead, System Admin, IT Manager)
+        M-->>A: escalation notification (in-app, e-mail, SMS) and audit record
+    end
+```
+
+### 3.7 Background processing and real-time updates
+
+**The SLA monitor** (`workers/sla_monitor.py`) is an asyncio task started with the application. Every 60 seconds it
+opens one Unit of Work and, for every open incident:
+
+1. asks the incident's `IncidentSLA` to `evaluate(now)`, which returns findings: a **warning** when 75 % of the active
+   target has elapsed, a **breach** when the deadline passes (each reported once);
+2. raises `SLAWarningRaised` / `SLAViolated` events; the `SLATracker` observer records each violation once (also
+   enforced by a unique constraint) and the `NotificationDispatcher` alerts the assignee and administrators;
+3. asks the `EscalationPolicy` whether an unacknowledged P1 (or P2, if enabled) has reached the next level, and walks
+   the chain **one level per run**, so every level is audited and notified even after downtime.
+
+Administrators can run the same check immediately with **Run SLA check now**.
+
+**Live updates** use Server-Sent Events. The `RealtimeForwarder` observer queues a small message for each incident event,
+and the Unit of Work sends it **only after the transaction commits** (`after_commit`), so a browser never shows a change
+that was rolled back. The `EventBroadcaster` delivers each message only to its audience: staff see everything, an
+employee only events about their own incidents. Dashboards, queues, the incident page and the notification bell refresh
+themselves; the browser reconnects automatically if the connection drops.
 
 ---
 
@@ -756,7 +881,7 @@ Any other move, for example NEW → CLOSED, raises `InvalidStateTransitionError`
 | **Interfaces** | Abstract base classes and `Protocol`s define contracts: `EventObserver.handle`, `NotificationChannel.send`, `PasswordHasher`, `TokenService`, `Clock`. | Tests replace the clock, the database and the providers with fakes. |
 | **Composition** | An `Incident` owns its `IncidentState`, `IncidentSLA` and `Comment`s; a `Technician` owns its `TechnicianProfile`; `EmailChannel` wraps a provider; the `ServiceContainer` composes services from parts. | Parts have no life of their own outside the owner, and behaviour is assembled instead of inherited. |
 | **Association / aggregation** | `Incident` refers to its reporter, technician, service and category by id (association); incidents link to similar incidents (many-to-many aggregation); services aggregate their dependencies; the `EventBus` aggregates observers. | Objects in different aggregates stay independent and can be loaded separately. |
-| **Exception handling** | A custom hierarchy rooted at `ITSMError`, each with a stable code and HTTP status (Section 10). | Every spec exception case has its own type and a consistent error response. |
+| **Exception handling** | A custom hierarchy rooted at `ITSMError`, each with a stable code and HTTP status (Section 12). | Every spec exception case has its own type and a consistent error response. |
 | **Collections** | `frozenset` for skills and permissions (fast membership, immutable); `dict` registries for strategies, states and channels (O(1) lookup by key); `tuple` for immutable value lists; `defaultdict` grouping in the correlator and recurring-problem detector; a union-find (disjoint set) for clustering. | Each structure is chosen for the operation it supports. |
 
 ### 5.2 Design patterns (7 implemented; the spec asks for 2)
@@ -786,6 +911,39 @@ a new strategy is one new class, with no change to the service, the API or the U
   separate small protocols.
 - **Dependency inversion:** the domain defines the interfaces and the infrastructure implements them; the
   `ServiceContainer` wires concrete classes in one place.
+
+### 5.4 Key classes and their responsibilities
+
+| Class | Layer | Responsibility |
+|---|---|---|
+| `Incident` | domain | Aggregate root: validates its data, delegates every lifecycle move to its state, owns its SLA clock and comments, records domain events |
+| `IncidentState` (+ 9 subclasses) | domain | Which transitions are allowed in each status |
+| `IncidentSLA` | domain | Deadlines, warnings, breaches, pause / resume, elapsed percentage |
+| `SLAPolicy`, `SLAPolicyResolver` | domain | Targets per priority; service-specific policy first, then default, else `MissingSLAConfigurationError` |
+| `User` → `Employee`, `Technician`, `Administrator` | domain | Identity, validation and role-specific permissions (polymorphic `permissions()`) |
+| `WeightedPriorityCalculator` | domain | The priority formula and its explanation text |
+| `AssignmentStrategy` (4 subclasses) + registry | domain | Choosing a technician; switchable at runtime |
+| `DefaultChannelSelectionPolicy` | domain | Which channels (in-app, e-mail, SMS) an event uses |
+| `EventBus`, `DomainEvent` (16 types) | domain | Publishing what happened, decoupled from who reacts |
+| `IncidentFactory`, `UserFactory`, `NotificationFactory` | domain | Validated creation in one place |
+| `IncidentService` | service | Every incident use case in one transaction: report, assign, transitions, comments, feedback |
+| `AssignmentService`, `SLAService`, `EscalationService` | service | Strategy selection and workload; SLA checks; escalation steps |
+| `IntelligenceService` | service | Front door to the intelligent features |
+| `ReportService`, `SearchService`, `AdminService`, `AuthService` | service | Dashboards; 11-criterion search; configuration with validation; registration and login |
+| `AuditLogger`, `NotificationDispatcher`, `SLATracker`, `RealtimeForwarder` | observers | Reactions to events |
+| `EmailChannel`, `SMSChannel`, `InAppChannel` | notifications | Adapters over the (simulated) providers |
+| `SqlAlchemyUnitOfWork`, `Sql*Repository`, mappers | persistence | Transactions and translation between domain objects and rows |
+| `TfidfTextSimilarity` | intelligence | The only class that imports scikit-learn |
+
+### 5.5 How the design absorbed changes
+
+Three changes made late in the project show the design at work:
+
+| Change | What was touched | What was not |
+|---|---|---|
+| The SLA clock must pause while waiting for the reporter | `IncidentSLA` (pause / resume), two columns, the `PendingInfoState` transitions | services, API, other features |
+| Reporter ratings should influence recommendations | `TechnicianRecommender` (one new weighted factor) | assignment strategies, incidents, UI apart from the reason text |
+| Incident numbers should be `DCN-1001` | one constant and two methods on `Incident` | storage (numbers are derived from ids), search logic, every other class |
 
 ---
 
@@ -821,6 +979,85 @@ examiner, need no training data (a new organisation has none), and behave predic
 statistics clearly help (text similarity), and it is hidden behind the `TextSimilarity` interface, so a sentence-embedding
 model could replace it with no other change.
 
+### How each feature works (with worked examples)
+
+**1. Priority.**
+`base = impact × urgency × criticality` (each 1-4, so 1-64), multiplied by an affected-users factor (×1.0 up to 10
+people, ×1.25 up to 100, ×1.5 above), capped at 64. Bands: P1 ≥ 32, P2 ≥ 16, P3 ≥ 6, else P4.
+
+| Incident | I | U | C | Users | Calculation | Result |
+|---|---|---|---|---|---|---|
+| Payment application unavailable | 4 | 4 | 4 | 500 | 64 × 1.5 = 96, capped | **64 → P1** |
+| Payment transaction failing | 4 | 3 | 4 | 200 | 48 × 1.5 = 72, capped | **64 → P1** |
+| Mailbox slow for my team | 2 | 2 | 3 | 8 | 12 × 1.0 | **12 → P3** |
+| Typo on the intranet wiki | 1 | 1 | 1 | 1 | 1 × 1.0 | **1 → P4** |
+
+**2. Duplicate / related detection.** Candidates are open incidents on the same service from the last 24 hours. The
+text `title. title. description` (the title counts twice) is compared with scikit-learn's `TfidfVectorizer` on
+**character 3-5-grams** and cosine similarity. ≥ 0.85 is a duplicate, ≥ 0.18 is related; the top 5 are stored.
+
+| "Payment application unavailable…" compared with | word TF-IDF | character 3-5-grams |
+|---|---|---|
+| "Payment transaction failing…" (related) | 0.05 | **0.23-0.25** |
+| "Unable to make payment…" (related) | 0.09 | **0.22-0.24** |
+| "Payment application is unavailable, users cannot…" (duplicate) | 1.00 | **0.93** |
+| unrelated tickets (refund CSV, VPN, printer) | 0.00 | **0.00-0.04** |
+
+Only a duplicate from the **same reporter within 30 minutes** is blocked (an accidental double submit); everyone
+else's report is linked, never rejected.
+
+**3. Correlation.** Over the service dependency graph: a **hotspot** is a service with ≥ 3 incidents reported in the
+last 2 hours; an **upstream cause** is a service with recent incidents that depends on another service which also has
+recent incidents. The graph is kept acyclic by a depth-first search whenever an administrator edits dependencies.
+
+**4. Automatic escalation.** For an unacknowledged P1, `level = min(4, 1 + ⌊overdue / response window⌋)`. With a
+5-minute response target, the levels fire at the deadline and 5, 10 and 15 minutes after it:
+
+| Minutes after the response deadline | 0 | 5 | 10 | 15+ |
+|---|---|---|---|---|
+| Level | 1 Technician | 2 Team Lead | 3 System Administrator | 4 IT Manager |
+
+**5. Smart technician recommendation.** `score = 100 × Σ weight × value`:
+
+| Factor | Value in [0, 1] | Weight (P3/P4) | Weight (P1/P2) |
+|---|---|---|---|
+| Skill matches the category | 1 or 0 | 0.40 | 0.40 |
+| Free capacity | 1 − active / max workload | 0.20 | 0.10 |
+| Experience | min(years, 15) / 15 | 0.15 | 0.25 |
+| History on this service | min(resolved here, 5) / 5 | 0.10 | 0.10 |
+| Reporter ratings | (average − 1) / 4, neutral 0.5 below 2 ratings | 0.10 | 0.10 |
+| Available and under the cap | 1 or 0 | 0.05 | 0.05 |
+
+Critical incidents move weight from spreading load to experience. The top 3 come with reasons such as
+"has NETWORK skill · 1/8 active incidents · 12 yrs experience · rated 4.3/5 by 3 reporters".
+
+**6. SLA risk.** `score = min(elapsed %, 150) × priority weight (P1 1.3, P2 1.15, P3 1.0, P4 0.9)`, plus 15 if
+unassigned and 10 if still unacknowledged after half the response window. BREACHED once the deadline has passed,
+HIGH ≥ 90, MEDIUM ≥ 60, else LOW. Paused incidents are never at risk.
+
+**7. Category suggestion.** `confidence = 0.6 × keyword score + 0.4 × history score`, where
+`keyword score = hits / (hits + 1)` and the history score is the TF-IDF similarity to one document per category built
+from its keywords and up to 30 recent resolved incidents. Shown at ≥ 0.12. Keywords are data, so a category an
+administrator adds is suggested immediately. Correct for **39 of 43** seed incidents (91 %).
+
+**8-9. Suggested resolutions and "Try this first".** The resolution summaries of the most similar resolved incidents,
+for technicians on the incident page and for employees while they type.
+
+**10. Predicted resolution time.** The median *working* time (paused time excluded) of at least 3 resolved incidents
+with the same category and priority, falling back to the same priority. Shown as "typically resolved in about 1.5 h",
+and as "taking longer than usual" once that time has passed.
+
+**11. Recurring problems.** Within each service, incidents from the last 30 days are clustered by single-link
+similarity (≥ 0.25) with a **union-find** structure. A cluster is reported when it has ≥ 3 incidents spread over
+≥ 24 hours, so a one-off burst (an outage reported ten times in ten minutes) is not mistaken for a recurring problem.
+
+**12. Impact / urgency hints.** Phrase rules per level, the highest level wins, and the matched phrase is the reason:
+"all customers" → impact 4, "whole department" → 3, "a few colleagues" → 2, "only me" → 1; "cannot pay", "is down",
+"outage" → urgency 4, "blocked", "deadline" → 3, "slow", "intermittent" → 2, "workaround", "no rush" → 1.
+
+**13. Rating-aware recommendation.** See factor "Reporter ratings" above; feedback is collected when the reporter
+verifies the fix.
+
 ### Explainability: the `Why Decerno decided` card
 
 Every incident page has one card that lists each automatic decision with the reason the system recorded when it made it:
@@ -847,7 +1084,167 @@ page), and **CI/CD** with GitHub Actions.
 
 ---
 
-## 7. Technology stack
+## 7. User interface and experience
+
+### 7.1 Design system
+
+| Element | Choice | Why |
+|---|---|---|
+| Name and logo | **Decerno**: a white "D" holding a gold tick on indigo | "I decide" + "settled": the logo is the name's meaning |
+| Typeface | **Domine** (serif) for all text, **IBM Plex Mono** for incident numbers and times | A calm, readable serif sets Decerno apart from typical dashboards; monospace makes `DCN-1038` and "3 min" line up |
+| Colour | Deep **indigo** brand on cool neutrals, **gold** accent only in the logo | Red, amber and green are reserved for meaning (priority, SLA status, success), so colour never misleads |
+| Themes | Light and dark, following the system or a manual toggle | All colours are design tokens defined once in `index.css`; components never use raw colours |
+| Components | Hand-built (cards, badges, tables, timeline, charts in CSS / SVG) | No UI or chart library: a small bundle (~410 KB, ~120 KB compressed) and full control |
+| Fonts offline | Self-hosted through `@fontsource` | The demo looks identical without internet |
+
+### 7.2 One interface per role
+
+| Role | Layout | Pages |
+|---|---|---|
+| Employee | Self-service **portal** with a top navigation bar | My incidents (with a "Needs your attention" box), Report an incident, Search (own incidents), Notifications |
+| Technician | **Console** with a sidebar | My queue (sorted by deadline), All incidents, Notifications, Team workload, Service health |
+| Administrator | **Console** with a sidebar | Dashboard, Incidents, SLA, Workload, Services, Users, Configuration, Audit log |
+| Everyone | | Incident page (actions depend on role and state), sign-in, registration |
+
+The incident page shows only the actions the current user may take in the current state; the list comes from the
+backend (`available_actions`), so the UI and the business rules can never disagree.
+
+### 7.3 Screens
+
+![Sign-in page](images/01-sign-in.png)
+
+*Sign-in. One-click demo accounts for the three roles; the meaning of the name on the left.*
+
+![Report an incident with live help](images/10-report-form-live-help.png)
+
+*Reporting an incident. While the employee types: "Try this first" fixes, similar open incidents (duplicate check),
+the suggested category with its confidence, and impact / urgency hints with the phrase that triggered them. "Speak
+instead" dictates the report.*
+
+![Employee portal](images/09-employee-portal.png)
+
+*Employee portal: what needs the employee's attention first, then their open incidents with SLA status.*
+
+![Technician queue](images/11-technician-queue.png)
+
+*Technician queue, sorted by deadline, with SLA countdowns.*
+
+![Incident page with the decision trail](images/04-incident-decision-trail.png)
+
+*Incident page: actions, description, **Why Decerno decided**, conversation, audit trail; SLA clocks, details,
+predicted resolution time and related incidents on the right.*
+
+![Administrator dashboard](images/02-admin-dashboard.png)
+
+*Operations dashboard: incidents likely to breach with reasons, incidents waiting for a technician, live activity,
+overview numbers and trends.*
+
+![Service health](images/03-service-health.png)
+
+*Service health: dependency graph (red = hotspot), likely common causes, and recurring problems.*
+
+![SLA monitoring](images/08-sla-report.png)
+
+*SLA monitoring: compliance per priority, violations, CSV export.*
+
+![Incident search](images/05-incident-search.png)
+
+*Search with combinable filters (bookmarkable URL) and CSV export; escalation levels shown as badges.*
+
+![Configuration](images/06-configuration.png)
+
+*Configuration: assignment strategy switched at runtime, escalation settings, services, categories, SLA policies.*
+
+![Audit log](images/07-audit-log.png)
+
+*Audit log: every action with actor, time and the state before and after; a second tab shows every notification
+delivery.*
+
+### 7.4 Usability and accessibility
+
+- Every automatic decision comes with a plain-language reason (Section 6).
+- Forms validate as you type and show server errors next to the relevant field.
+- Semantic HTML, labelled form fields, `aria-label`s on icon buttons, visible keyboard focus, readable contrast in both
+  themes.
+- Responsive down to phone width: the employee navigation scrolls sideways, the staff sidebar becomes a drawer, and
+  the SLA clocks move above the long history on small screens.
+- Voice input on the report form and every free-text box of the incident page (Chrome / Edge), with on-device
+  recognition where the browser offers it.
+
+---
+
+## 8. API design
+
+### 8.1 Style
+
+- **REST over JSON**, all under `/api`, documented automatically with **OpenAPI**: Swagger UI at `/docs`, ReDoc at
+  `/redoc` (title "Decerno API").
+- **Resources** are nouns (`/incidents`, `/admin/services`); **lifecycle actions are explicit sub-resources**
+  (`POST /incidents/{id}/acknowledge`), because each one is a state transition that must be checked and audited. A
+  generic `PATCH status=CLOSED` would make skipping states too easy.
+- **Authentication:** `Authorization: Bearer <JWT>` on every call except health, login and registration.
+- **Authorisation:** a permission guard on every route, then ownership rules in the domain.
+- **Validation:** Pydantic models on every request body and query parameter.
+
+### 8.2 Endpoints (73 operations)
+
+| Area | Ops | Main endpoints |
+|---|---|---|
+| Health | 1 | `GET /health` (database check) |
+| Auth | 3 | `POST /auth/register`, `POST /auth/login`, `GET /auth/me` |
+| Incidents | 21 | `POST /incidents`, `GET /incidents` (11 filters, paging, sort), `GET /incidents/export.csv`, `GET` / `PATCH /incidents/{id}`; actions `assign`, `auto-assign`, `acknowledge`, `start`, `request-info`, `provide-info`, `comments`, `resolve`, `reopen`, `verify`, `close`, `feedback`; `audit`, `recommendations`, `resolution-estimate`, `suggested-resolutions` |
+| Intelligence | 7 | `suggest-category`, `suggest-severity`, `check-duplicates`, `self-help` (while typing); `sla-risk`, `correlation`, `recurring` (staff) |
+| Technicians | 3 | `GET /technicians/me/queue`, `PUT /technicians/me/availability`, `GET /technicians/workload` |
+| Notifications | 4 | list, unread count, mark one / all read |
+| Reports | 6 | `overview`, `technicians`, `services`, `sla`, `sla/violations.csv`, `trends` |
+| Lookups | 3 | services, categories, technicians (for forms) |
+| Admin | 24 | users (list, create, edit, activate, deactivate), technician profiles, services and their dependencies, categories, SLA policies (CRUD), assignment strategy, escalation settings, audit logs, notification log, `sla/check-now` |
+| Real-time | 1 | `GET /stream/events` (Server-Sent Events) |
+
+### 8.3 Example: reporting an incident
+
+```http
+POST /api/incidents
+Authorization: Bearer eyJhbGciOi...
+Content-Type: application/json
+
+{ "title": "Unable to make payment",
+  "description": "I am unable to make a payment, the payment page shows an error.",
+  "service_id": 6, "impact": 4, "urgency": 4, "affected_users": 200, "category_id": null }
+```
+
+```json
+201 Created (abbreviated)
+{ "id": 44, "number": "DCN-1044", "status": "ASSIGNED", "priority": "P1", "priority_score": 64.0,
+  "category": { "name": "Application" }, "technician": { "name": "Arjun Verma" },
+  "sla": { "response_minutes": 3, "resolution_minutes": 20, "status": "ON_TRACK" },
+  "links": [ { "number": "DCN-1037", "similarity": 0.67, "link_type": "RELATED" } ],
+  "available_actions": ["comment", "update"] }
+```
+
+### 8.4 Errors
+
+Every error uses one envelope, with a stable machine-readable code:
+
+```json
+409 Conflict
+{ "error": { "code": "INVALID_STATE_TRANSITION",
+             "message": "Cannot 'close (awaiting reporter verification)' an incident in state RESOLVED",
+             "details": { "current_state": "RESOLVED", "action": "close (awaiting reporter verification)" } } }
+```
+
+| Status | Meaning |
+|---|---|
+| 401 | not signed in, bad or expired token (with `WWW-Authenticate: Bearer`) |
+| 403 | signed in but not allowed (role or ownership) |
+| 404 | incident, service, user, category or policy not found |
+| 409 | invalid transition, duplicate incident, conflict, technician unavailable or over workload |
+| 422 | invalid input, invalid incident, missing SLA configuration |
+| 503 | database failure |
+
+---
+
+## 9. Technology stack
 
 | Layer | Technology | Version | Used for |
 |---|---|---|---|
@@ -864,6 +1261,7 @@ page), and **CI/CD** with GitHub Actions.
 | UI library | React | 19.3 | Component-based UI |
 | Build tool | Vite | 8.3 | Dev server, `/api` proxy, production build |
 | Styling | Tailwind CSS | 4.3 | Design tokens, responsive layout, dark mode |
+| Fonts | Domine, IBM Plex Mono (`@fontsource`, self-hosted) | 5.3 | Typeface for all text; monospace for numbers and times |
 | Routing | React Router | 8.5 | Role-based routes |
 | Browser APIs | Web Speech API, EventSource (SSE) | | Voice input, live updates |
 | Testing | pytest, httpx (FastAPI TestClient) | | 178 automated cases |
@@ -875,11 +1273,11 @@ readable.
 
 ---
 
-## 8. Technology selection report
+## 10. Technology selection report
 
 The spec asks nine questions. Each answer gives the reason, not just the choice.
 
-### 8.1 Why this programming language? (Python 3.14 + TypeScript)
+### 10.1 Why this programming language? (Python 3.14 + TypeScript)
 
 - **Python** has first-class OOP (classes, abstract base classes, multiple inheritance for mixins, properties,
   `Protocol` for structural interfaces, dataclasses for value objects) without the ceremony of Java, so the design
@@ -891,7 +1289,7 @@ The spec asks nine questions. Each answer gives the reason, not just the choice.
 - **TypeScript** on the frontend gives the same safety in the browser: the API client and all response types are
   typed, so a backend change that breaks the UI is caught at build time.
 
-### 8.2 Why this frontend technology? (React 19 + Vite + Tailwind CSS)
+### 10.2 Why this frontend technology? (React 19 + Vite + Tailwind CSS)
 
 - The spec requires **a different interface for each role**. React's component model lets the three role interfaces
   share building blocks (cards, tables, forms, the incident timeline) while composing different pages.
@@ -900,7 +1298,7 @@ The spec asks nine questions. Each answer gives the reason, not just the choice.
 - **Tailwind CSS v4** keeps styling next to the markup and supports design tokens, dark mode and responsive layouts.
 - Direct access to browser APIs we needed: **EventSource** for live updates, **Web Speech** for voice input.
 
-### 8.3 Why this backend technology? (FastAPI)
+### 10.3 Why this backend technology? (FastAPI)
 
 - **Dependency injection** (`Depends`) is built in. The role guard on every endpoint is one line
   (`Depends(require(Permission.WORK_INCIDENTS))`), and services are injected rather than constructed in handlers.
@@ -910,7 +1308,7 @@ The spec asks nine questions. Each answer gives the reason, not just the choice.
   Django, by contrast, pushes business logic into its models.
 - It supports **streaming responses** for Server-Sent Events and background tasks for the SLA monitor.
 
-### 8.4 Why this database? (PostgreSQL 18)
+### 10.4 Why this database? (PostgreSQL 18)
 
 - Incidents, users, services, SLA policies, audit records and their relationships are **strongly relational**, with
   foreign keys, unique constraints ("one feedback per incident", "one policy per priority and service") and
@@ -922,7 +1320,7 @@ The spec asks nine questions. Each answer gives the reason, not just the choice.
 - The schema uses only **portable column types**, so the test suite also runs on SQLite in memory with no setup. CI
   runs it on both.
 
-### 8.5 Why this architecture? (Layered / clean modular monolith)
+### 10.5 Why this architecture? (Layered / clean modular monolith)
 
 - It puts the **domain model at the centre**, which is what an OOP project should demonstrate, and keeps it free of
   framework code so it can be tested and explained in isolation.
@@ -933,7 +1331,7 @@ The spec asks nine questions. Each answer gives the reason, not just the choice.
 - The **event bus** already makes the internal design event-driven: audit, notifications and live updates react to
   events instead of being called directly.
 
-### 8.6 What alternatives did we consider?
+### 10.6 What alternatives did we consider?
 
 | Decision | Alternatives | Why we did not choose them |
 |---|---|---|
@@ -947,9 +1345,9 @@ The spec asks nine questions. Each answer gives the reason, not just the choice.
 | Architecture | Microservices | Network calls, distributed transactions and deployment overhead with no benefit at this scale |
 | Real-time | WebSockets | Updates only flow server → client; SSE is simpler, works over plain HTTP and reconnects automatically |
 | Intelligence | A large language model | Needs an external paid service and network, is not deterministic, and is hard to explain; rules + TF-IDF are explainable and free |
-| Auth | Sessions + cookies | JWT keeps the API stateless; the trade-offs are documented in Section 11 |
+| Auth | Sessions + cookies | JWT keeps the API stateless; the trade-offs are documented in Section 13 |
 
-### 8.7 Advantages and limitations of our stack
+### 10.7 Advantages and limitations of our stack
 
 **Advantages**
 
@@ -962,15 +1360,15 @@ The spec asks nine questions. Each answer gives the reason, not just the choice.
 **Limitations**
 
 - Python is slower than Java or Go per request. This is irrelevant at this scale, and the fix is horizontal scaling
-  (Section 13).
+  (Section 16).
 - The SLA monitor and the live-update broadcaster run **inside the API process**, so running several API processes would
-  need a shared broker and a separate worker (Section 13).
+  need a shared broker and a separate worker (Section 16).
 - E-mail and SMS are **simulated**.
-- The token is stored in `localStorage` and passed to the SSE stream as a query parameter (Section 11).
+- The token is stored in `localStorage` and passed to the SSE stream as a query parameter (Section 13).
 - Voice input needs Chrome or Edge, and a network that allows the browser's speech service unless the browser has an
   on-device model.
 
-### 8.8 How does our technology support object-oriented design?
+### 10.8 How does our technology support object-oriented design?
 
 - **Python ABCs and `Protocol`s** express interfaces (`AssignmentStrategy`, `NotificationChannel`, `UnitOfWork`), and
   `@abstractmethod` stops anyone from creating an incomplete implementation.
@@ -983,9 +1381,9 @@ The spec asks nine questions. Each answer gives the reason, not just the choice.
   never leaks into the domain.
 - **TypeScript interfaces** mirror the API contracts; React components compose like objects.
 
-### 8.9 How would the system evolve if the number of users increased significantly?
+### 10.9 How would the system evolve if the number of users increased significantly?
 
-See Section 13 for details. In short:
+See Section 16 for details. In short:
 
 1. Run **several stateless API processes** behind a load balancer (JWT needs no server-side session).
 2. Move the **SLA monitor** into its own worker with a database lock so only one instance runs, and move **live updates**
@@ -998,9 +1396,9 @@ See Section 13 for details. In short:
 
 ---
 
-## 9. Database design
+## 11. Database design
 
-### 9.1 ER diagram
+### 11.1 ER diagram
 
 ```mermaid
 erDiagram
@@ -1138,7 +1536,7 @@ erDiagram
 The full column list (including the SLA snapshot and pause columns) is in [`docs/ER.md`](ER.md); the schema source is
 `backend/app/repositories/orm.py`, and migrations are in `backend/alembic/versions/`.
 
-### 9.2 Schema (14 tables)
+### 11.2 Schema (14 tables)
 
 | Table | Purpose | Key columns |
 |---|---|---|
@@ -1157,7 +1555,7 @@ The full column list (including the SLA snapshot and pause columns) is in [`docs
 | `feedback` | Reporter rating 1-5 and comment | `incident_id` unique |
 | `system_settings` | Key-value settings | active strategy, round-robin cursor, P2 escalation flag |
 
-### 9.3 Important relationships and constraints
+### 11.3 Important relationships and constraints
 
 | Rule | Enforced by |
 |---|---|
@@ -1174,7 +1572,7 @@ stays free of SQLAlchemy. The SLA clock is stored inline in `incidents` because 
 (composition). Policy targets are copied onto the incident when applied, so editing a policy never silently moves an
 existing deadline.
 
-### 9.4 Sample data
+### 11.4 Sample data
 
 `python -m scripts.seed --reset` replays two weeks of history **through the real services** (so all rules, audit
 records and notifications are genuine):
@@ -1192,18 +1590,19 @@ records and notifications are genuine):
 
 Example rows:
 
-| Number | Title | Service | Priority | Status |
-|---|---|---|---|---|
-| DCN-1035 | Payment application unavailable | Payments Platform | P1 | IN_PROGRESS |
-| DCN-1036 | Payment transaction failing | Payments Platform | P1 | ASSIGNED |
-| DCN-1037 | Unable to make payment | Payments Platform | P1 | ASSIGNED |
-| — | VPN tunnel drops for remote staff (3 times in 12 days) | Corporate VPN | P2 / P3 | recurring problem |
+| Number | Title | Reporter | Service | Priority | Status | Technician |
+|---|---|---|---|---|---|---|
+| DCN-1035 | Payment application unavailable | Adi Rajauria | Payments Platform | P1 | ACKNOWLEDGED | Arjun Verma |
+| DCN-1036 | Payment transaction failing | Aman Gupta | Payments Platform | P1 | ASSIGNED | Priya Nair |
+| DCN-1037 | Unable to make payment | Isha Bose | Payments Platform | P1 | ASSIGNED | Arjun Verma |
+| DCN-1038 | Payment application is unavailable (duplicate of DCN-1035) | Neha Joshi | Payments Platform | P1 | ASSIGNED | Priya Nair |
+| DCN-1003, 1013, 1032 | VPN tunnel drops for remote staff (3 times in 12 days) | several | Corporate VPN | P2 / P3 | recurring problem | Infra team |
 
 All demo accounts use the password `Demo@1234` (for example `abhinandan@decerno.demo`, `shrey@decerno.demo`, `adi@decerno.demo`).
 
 ---
 
-## 10. Exception and error handling
+## 12. Exception and error handling
 
 Every exceptional situation in the spec has its own exception class. All derive from `ITSMError`, which carries a stable
 machine-readable code; one handler maps them to HTTP responses in a consistent envelope
@@ -1232,7 +1631,7 @@ from the description; please choose one" appears on the Category field).
 
 ---
 
-## 11. Security
+## 13. Security
 
 | Requirement | Implementation |
 |---|---|
@@ -1255,9 +1654,9 @@ refresh tokens or login rate limiting (add per-IP and per-account limits and loc
 
 ---
 
-## 12. Testing
+## 14. Testing
 
-### 12.1 Strategy
+### 14.1 Strategy
 
 | Level | Folder | What it covers | Database |
 |---|---|---|---|
@@ -1305,8 +1704,10 @@ The full table of **106 documented test cases** (ID, description, input, expecte
 | TC-86 | Invalid search criteria | page 0, page size 101, 201-char text, from > to | `InvalidInputError` | Invalid input |
 | TC-94 | Role guards over HTTP (11 cases) | each role × admin, reports, intelligence, queue | 403 or 200 exactly as designed | Authorization |
 | TC-106 | CSV export | admin, P1 filter, employee; title `=HYPERLINK(...)` | all rows; only P1; only own; cell escaped as text | Normal / security |
+| TC-107 | Decerno incident numbers | "DCN-1005", "dcn1005", "1005", "INC1005", "DCN-" | 5, 5, 5, then rejected | Normal / invalid input |
 
-### 12.2 Bugs found and fixed during development
+
+### 14.2 Bugs found and fixed during development
 
 | Bug | Found by | Fix |
 |---|---|---|
@@ -1315,9 +1716,67 @@ The full table of **106 documented test cases** (ID, description, input, expecte
 | Backend reload hung while live-update streams were open | Manual testing | Graceful-shutdown timeout in the run scripts |
 | Voice input reported "needs internet" while online | User testing | Clear cause-specific messages; on-device recognition where available |
 
+### 14.3 End-to-end rehearsal against the running system
+
+Before recording, the three demo workflows were run end to end against the real backend, database and frontend with
+every role (about 60 checks):
+
+| Area | Result |
+|---|---|
+| Time-sensitive views right after seeding | P1 incidents at escalation levels 2, 3 and 4; payments hotspot; upstream causes; the VPN recurring problem; 18 incidents at SLA risk |
+| Workflow 1 | P1 calculated, category suggested, SLA attached, auto-assigned, technician notified, estimate shown |
+| Workflow 2 | acknowledge, start, internal note, request info (clock paused), reply, resolve, verify with rating, close; full audit trail; employee blocked from technician actions |
+| Workflow 3 | the spec's wording linked as duplicate and related; the same report twice blocked; hotspot detected |
+| Report form helpers | self-help tips, impact / urgency hints, category suggestion, duplicate preview |
+| Search, CSV, permissions | every filter; both CSV exports; employees export only their own incidents; role guards |
+
+Two findings became demo guidance rather than code changes: reports must be worded naturally for duplicate detection
+to link them (as in the spec's examples), and "Payment transaction failing" alone gives no confident category, so the
+form asks the reporter to choose one (the invalid-incident exception case, handled as designed).
+
+### 14.4 Continuous integration
+
+| Job | Steps |
+|---|---|
+| Backend (SQLite) | install pinned requirements, run all 178 tests on an in-memory database |
+| Backend (PostgreSQL 18) | start a PostgreSQL container, run the migrations and the seed on a fresh database, run all tests against `itsm_test` |
+| Frontend | `npm ci`, type-check, production build |
+
 ---
 
-## 13. Scalability and future evolution
+## 15. Development process
+
+### 15.1 Version control and reviews
+
+- Git and GitHub from the first day. Each feature or fix was built on its **own branch** and merged through a
+  **pull request** with a summary and a test plan (21 pull requests), with CI required to pass first.
+- Commits are small and describe the change and the reason.
+- After the feature work was merged, final polishing was committed directly on `main`.
+
+### 15.2 Quality practices
+
+| Practice | How |
+|---|---|
+| Static typing | Every Python function is type-annotated; the frontend is strict TypeScript; API types mirror the backend schemas |
+| Domain first | Business rules were written and unit-tested before any route or page used them |
+| Tests with every change | New behaviour came with tests (178 cases now); bugs got a test that reproduced them first |
+| Migrations | Every schema change is an Alembic migration; CI runs them on a fresh PostgreSQL database |
+| Realistic data | The seed replays two weeks of history through the real services, so demo data obeys every rule |
+| Documentation | Plan, assumptions (99, numbered), algorithms, ER design, security, setup, test cases, Open/Closed examples, this report and the demo script, all in `docs/` |
+
+### 15.3 Size of the code base
+
+| Part | Files | Lines |
+|---|---|---|
+| Backend application (`backend/app`) | 88 | ~7,500 |
+| of which the domain model | 23 | ~2,450 |
+| Backend tests | 18 | ~1,800 |
+| Frontend (`frontend/src`) | 42 | ~5,200 |
+| Documentation (`docs`) | 10 | ~2,300 |
+
+---
+
+## 16. Scalability and future evolution
 
 The current deployment is deliberately a **single process**: the API, the 60-second SLA monitor and the live-update
 broadcaster share one Uvicorn process. That is correct for a department-sized organisation and a demo. The design is
@@ -1343,7 +1802,22 @@ limiting, refresh tokens in httpOnly cookies, and a knowledge base built from re
 
 ---
 
-## 14. Team and responsibilities
+## 17. Known limitations
+
+| Limitation | Effect | Possible next step |
+|---|---|---|
+| E-mail and SMS are simulated | Messages are recorded, not sent | Real providers behind the existing adapters |
+| Single process (SLA monitor and live updates inside the API) | Running several API processes would duplicate the monitor and split live updates | Separate worker with a database lock, Redis pub/sub (Section 16) |
+| SLA clocks run 24 × 7 | No business hours or holidays | A calendar per SLA policy |
+| Thresholds (similarity 0.18 / 0.85, risk levels) were calibrated on our own data | May need tuning for another organisation | Make them settings; recalibrate on real history |
+| Token in `localStorage`, SSE token in the query string | Exposed if an XSS bug existed; may appear in server logs | httpOnly cookie, single-use stream ticket |
+| No login rate limiting or refresh tokens | Sign in again after 60 minutes; brute force slowed only by Argon2 | Rate limiting, lockout, refresh tokens |
+| Voice input depends on the browser | Chrome / Edge only; may need the vendor's speech service | An on-premise speech-to-text service behind the same hook |
+| Seed data is relative to "now" | Some demo views (hotspot, escalation levels) fade within minutes to an hour | Reseed shortly before a demo |
+
+---
+
+## 18. Team and responsibilities
 
 | Member | Primary responsibility | Also contributed to |
 |---|---|---|
@@ -1355,7 +1829,7 @@ Every member understands the overall system; each explains their module in the d
 
 ---
 
-## 15. Conclusion
+## 19. Conclusion
 
 Decerno covers the complete incident lifecycle the spec describes, and every MVP requirement, user role, search
 criterion, exception case and security point (Appendix A). Beyond the minimum, it has thirteen explainable intelligent
@@ -1388,13 +1862,13 @@ lives behind its own abstraction. The 178 tests, which stayed green through thos
 | Technician: queue, acknowledge, investigate, notes, status, request info, resolve, workload | ✅ | technician console |
 | Admin: users, technicians, services, SLA, categories, strategies, monitor, reports, audit, violations | ✅ | administrator console |
 | Reports: overview, workload, service analysis | ✅ + SLA report, trends, service health | dashboards |
-| All 12 exception cases | ✅ | Section 10 |
-| Security minimum | ✅ | Section 11 |
+| All 12 exception cases | ✅ | Section 12 |
+| Security minimum | ✅ | Section 13 |
 | ≥ 2 design patterns | ✅ 7 | Section 5.2 |
-| ≥ 15 test cases | ✅ 107 documented, 178 automated | Section 12 |
+| ≥ 15 test cases | ✅ 107 documented, 178 automated | Section 14 |
 | Architecture, use case, class diagrams | ✅ | Sections 3-4 |
-| Technology selection: 9 questions | ✅ | Section 8 |
-| ER diagram, schema, relationships, sample data | ✅ | Section 9 |
+| Technology selection: 9 questions | ✅ | Section 10 |
+| ER diagram, schema, relationships, sample data | ✅ | Section 11 |
 | Innovation challenge | ✅ voice reporting, real-time dashboard, dependency graph, root-cause hints, predictive SLA, CI | Section 6 |
 | Source code in version control | ✅ GitHub | repository link above |
 
@@ -1415,3 +1889,19 @@ cd backend && .venv/bin/pytest
 ```
 
 Full instructions: [`README.md`](../README.md) and [`docs/SETUP.md`](SETUP.md).
+
+## Appendix C: Demo accounts
+
+All accounts use the password `Demo@1234`.
+
+| Role | Account | Name | Notes |
+|---|---|---|---|
+| Administrator | `abhinandan@decerno.demo` | Abhinandan Chandak | System Admin (one-click on the sign-in page) |
+| Administrator | `ops@decerno.demo` | Omar Siddiqui | System Admin |
+| Administrator | `manager@decerno.demo` | Ravi Menon | IT Manager, last escalation level |
+| Technician | `shrey@decerno.demo` | Shrey Bhasker | Infra team lead: NETWORK, SECURITY (one-click) |
+| Technician | `priya@decerno.demo` | Priya Nair | Apps team lead: APPLICATION, SOFTWARE, DATABASE |
+| Technician | `arjun@decerno.demo` | Arjun Verma | Apps: APPLICATION, CLOUD |
+| Technician | `meera@`, `tom@`, `dev@`, `lina@`, `sana@decerno.demo` | | Infra, Platform and Identity teams |
+| Employee | `adi@decerno.demo` | Adi Rajauria | Finance, reported the payment outage (one-click) |
+| Employee | `aman@`, `neha@`, `vikram@`, `zoya@`, `karan@`, `isha@decerno.demo` | | Sales, HR, Operations, Marketing, Engineering, Customer Support |

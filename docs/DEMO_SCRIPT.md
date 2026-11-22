@@ -18,13 +18,15 @@ All accounts use the password **`Demo@1234`**.
       notifications on the computer muted, browser zoom 110-125 % so text is readable.
 - [ ] Open in an editor (for the short code moments): `backend/app/domain/lifecycle.py`,
       `backend/app/domain/strategies/assignment.py`, `backend/app/domain/events.py`.
+- [ ] In Window A, keep a second tab open on the API documentation: <http://127.0.0.1:8000/docs>.
+- [ ] Refresh every window once with **Ctrl + F5**, so the browser has the latest version (Domine font, new logo).
 
 ### Countdown (the seed is time-relative, so do this right before recording)
 
 | When | Do |
 |---|---|
 | **T − 3 min** | `cd backend` then `.\.venv\Scripts\python.exe -m scripts.seed --reset` |
-| **T − 2 min** | Sign in, one role per window (normal window, private window, second browser): **Window A** `abhinandan@decerno.demo` (Dashboard) · **Window B** `arjun@decerno.demo` (My queue) · **Window C** `isha@decerno.demo` (My incidents) |
+| **T − 2 min** | Sign in, one role per window (normal window, private window, second browser): **Window A** `abhinandan@decerno.demo` (Dashboard) · **Window B** `arjun@decerno.demo` (My queue) · **Window C** `adi@decerno.demo` (My incidents) |
 | **T − 0** | Start recording. Start on **Window A**. |
 
 **Why the order below matters:** P1 escalations at three different levels are only visible for about 5 minutes after
@@ -41,8 +43,9 @@ dashboard comes first.
 
 > "Hello, I am **[Member 1]**, and I worked on **[module, e.g. the frontend and the role interfaces]**. This is
 > **Decerno** (say *deh-CHAIR-no*), our Intelligent IT Service Management system. The name is Latin for 'I decide, I
-> settle', because the system decides priority, deadlines and who handles each incident, and helps settle it. It manages the full incident lifecycle: report, classify, prioritise,
-> assign, investigate, resolve, verify and close. It is a React and TypeScript frontend on a Python FastAPI backend with
+> settle', because the system decides priority, deadlines and who handles each incident, and helps settle it; the
+> logo is a D holding a tick for the same reason. It manages the full incident lifecycle: report, classify,
+> prioritise, assign, investigate, resolve, verify and close. It is a React and TypeScript frontend on a Python FastAPI backend with
 > PostgreSQL, built around a pure object-oriented domain model. Each role gets its own interface: this is the
 > administrator's."
 
@@ -90,7 +93,7 @@ dashboard comes first.
 
 ### Workflow 1: employee reports → system prioritises → technician assigned → notification
 
-**[5:15] Window C (Isha, employee) → Report an incident**
+**[5:15] Window C (Adi, employee) → Report an incident**
 
 1. Service: **Payments Platform**.
 2. 🎤 Click **Speak instead** and say: *"Unable to make payment. I am unable to make a payment, the payment page shows
@@ -110,7 +113,9 @@ dashboard comes first.
 
 - **Priority P1** with the formula: "Impact 4 × urgency 4 × business criticality 4 of the payment service, times a
   factor for 200 affected users, capped at 64. 32 or more is P1."
-- **SLA:** response due in 5 minutes, resolution in 30, the spec's table.
+- The number is **DCN-10xx**: Decerno's own incident numbering.
+- **SLA:** "Payments has its own stricter P1 policy: respond within 3 minutes, resolve within 20. Other services use
+  the spec's table, 5 and 30 minutes."
 - **Assigned to** Arjun: "chosen by the active **assignment strategy**".
 - **Related incidents** linked automatically.
 - Scroll to **Why Decerno decided**: "This card is what the name means. Every decision the system made is listed with its reason: the category, the priority formula, which SLA applies, why this technician was chosen, which reports were linked and why. Nothing is a black box."
@@ -134,7 +139,7 @@ dashboard comes first.
 4. Click **Request more info** and ask: *"Which browser are you using, and when did it start?"*
    > "The incident is now **Pending info**, and the **SLA clock pauses**, because we are waiting for the reporter."
 
-**[9:15] Window C (Isha):** a banner says "The technician needs more information from you". Click
+**[9:15] Window C (Adi):** a banner says "The technician needs more information from you". Click
 **Answer the question**: *"Chrome, since about ten o'clock."* Point out the internal note is not visible here.
 
 **[9:45] Window B:** the reply appears live and the clock resumes.
@@ -165,7 +170,8 @@ comment. "Feedback is stored, and ratings feed back into technician recommendati
 
 ### Workflow 3: multiple reports → duplicates / related → correlated / escalated
 
-**[12:15] Window C: sign out, sign in as `neha@decerno.demo`, Report an incident**
+**[12:15] Window C: sign out** (this shows the sign-in page: point at the name and its meaning, *dēcernō*, and the
+one-click demo accounts), **then sign in as `neha@decerno.demo` and Report an incident**
 
 - Payments Platform, title **"Payment application unavailable"**, description *"The payment application is
   unavailable, customers cannot pay."*, impact 4, urgency 4, 200 users.
@@ -213,18 +219,24 @@ is bookmarkable; **Download CSV**.
 > That is the **Observer pattern**. We used seven patterns in total: Strategy, State, Observer, Factory, Repository with
 > Unit of Work, Adapter for the e-mail and SMS providers, and Template Method."
 
-**[17:55] Testing (terminal or GitHub Actions page)**
+**[17:55] API (about 30 s): Window A, the `/docs` tab**
+
+> "The backend is a documented REST API: 73 operations, generated automatically as this Swagger page. Lifecycle actions
+> are explicit, like `POST /incidents/{id}/acknowledge`, so every transition is checked and audited, and every
+> endpoint is protected by role."
+
+**[18:25] Testing (terminal or GitHub Actions page)**
 
 > "We have **178 automated tests**: unit tests for the domain, service tests with in-memory repositories, and API tests.
 > GitHub Actions runs them on every push, on both SQLite and PostgreSQL, and also builds the frontend."
 
 (Optional: run `.\.venv\Scripts\python.exe -m pytest -q` in `backend` before recording and show the result, since it
-takes about 20 seconds.)
+takes about 45 seconds.)
 
-**[18:20] Close**
+**[18:50] Close**
 
-> "To sum up: Decerno covers every MVP requirement, adds thirteen explainable intelligent features, real-time
-> dashboards, a dependency graph and voice reporting, and the object-oriented design kept all of it easy to change.
+> "To sum up: Decerno covers every MVP requirement, adds thirteen explainable intelligent features, explains every
+> decision it makes, and adds real-time dashboards, a dependency graph and voice reporting, and the object-oriented design kept all of it easy to change.
 > Thank you."
 
 Stop recording.
@@ -239,7 +251,8 @@ Stop recording.
 | The new incident is assigned to someone other than Arjun | Window A: open it, **Assign / reassign** to Arjun using **Recommended technicians** (this is also a feature to show) |
 | A step shows an error | Read the message out: it is usually an exception case working as designed (for example, an illegal action) |
 | Something breaks badly | Stop, reseed, sign in again, restart |
-| Over 20 minutes | Skip the optional parts and the second code moment |
+| Over 20 minutes | Skip the optional parts, the API moment and the second code moment |
+| A history entry still says INC… | The database was seeded before the DCN change: reseed |
 
 ## Checklist: what the video must show (from the spec)
 
@@ -249,5 +262,7 @@ Stop recording.
 - [ ] Workflow 3: multiple reports → duplicate / related → correlated / escalated
 - [ ] Three different role interfaces
 - [ ] Intelligent features: priority, duplicates, correlation, escalation, recommendation, SLA risk, category suggestion, suggested resolutions
+- [ ] The **Why Decerno decided** card (explainability)
 - [ ] Innovation: voice reporting, real-time dashboard, dependency graph
+- [ ] API documentation (Swagger) and tests (technical depth)
 - [ ] Length 15-20 minutes
