@@ -113,6 +113,7 @@ dashboard comes first.
 - **SLA:** response due in 5 minutes, resolution in 30, the spec's table.
 - **Assigned to** Arjun: "chosen by the active **assignment strategy**".
 - **Related incidents** linked automatically.
+- Scroll to **Why Decerno decided**: "This card is what the name means. Every decision the system made is listed with its reason: the category, the priority formula, which SLA applies, why this technician was chosen, which reports were linked and why. Nothing is a black box."
 - **History (audit trail):** created, classified, priority calculated, assigned, with time, user and states.
 
 **[7:30] Window B (Arjun, technician)**
@@ -214,7 +215,7 @@ is bookmarkable; **Download CSV**.
 
 **[17:55] Testing (terminal or GitHub Actions page)**
 
-> "We have **171 automated tests**: unit tests for the domain, service tests with in-memory repositories, and API tests.
+> "We have **178 automated tests**: unit tests for the domain, service tests with in-memory repositories, and API tests.
 > GitHub Actions runs them on every push, on both SQLite and PostgreSQL, and also builds the frontend."
 
 (Optional: run `.\.venv\Scripts\python.exe -m pytest -q` in `backend` before recording and show the result, since it

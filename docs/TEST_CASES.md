@@ -1,6 +1,6 @@
 # Test cases
 
-Run: `cd backend && .venv/bin/pytest` (107 test functions, 171 cases with parametrisation; about 20 s, mostly the seeded API tests).
+Run: `cd backend && .venv/bin/pytest` (108 test functions, 178 cases with parametrisation; about 20 s, mostly the seeded API tests).
 CI (`.github/workflows/ci.yml`, GitHub Actions) runs on every push and pull request: the whole suite on SQLite and again on
 a PostgreSQL 18 service container, plus `alembic upgrade head` and the seed script on a fresh PostgreSQL database, and the
 frontend type-check + build.

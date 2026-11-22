@@ -52,6 +52,8 @@ Everything runs locally: no Docker, no cloud.
 | Predicted resolution time | median working time of comparable resolved incidents |
 | Impact / urgency hints | phrase rules ("all customers", "cannot pay") with the matched phrase as the reason |
 
+Every incident page also has a **Why Decerno decided** card: one place that explains each automatic decision (category, priority formula, SLA deadlines, technician and strategy, similar reports, escalation) with the reason recorded when it was made.
+
 ### Innovation
 
 - **Real-time dashboard** via Server-Sent Events.
@@ -100,7 +102,7 @@ Open/Closed examples (new category, strategy or channel with no changes elsewher
 | Intelligence | scikit-learn (TF-IDF + cosine similarity), rule-based scoring |
 | Database | PostgreSQL 18 (tests: SQLite in memory, or PostgreSQL) |
 | Frontend | React 19, TypeScript, Vite, Tailwind CSS v4, React Router |
-| Tests / CI | pytest (171 cases), GitHub Actions |
+| Tests / CI | pytest (178 cases), GitHub Actions |
 
 ---
 
@@ -190,7 +192,7 @@ before a demo**: the payment-outage hotspot is only visible for about 30 minutes
 
 ```bash
 cd backend
-.venv\Scripts\python -m pytest          # Windows: 171 cases on SQLite in memory, no setup needed
+.venv\Scripts\python -m pytest          # Windows: 178 cases on SQLite in memory, no setup needed
 .venv/bin/pytest                        # macOS / Linux
 ```
 

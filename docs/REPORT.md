@@ -151,13 +151,13 @@ All 99 assumptions are numbered in [`docs/ASSUMPTIONS.md`](ASSUMPTIONS.md). The 
 
 | ID | Quality | Requirement and how it is met |
 |---|---|---|
-| NFR-1 | **Maintainability** | Layered architecture with dependencies pointing inward; the domain has no framework imports; 171 automated tests. |
+| NFR-1 | **Maintainability** | Layered architecture with dependencies pointing inward; the domain has no framework imports; 178 automated tests. |
 | NFR-2 | **Extensibility (Open/Closed)** | A new category, assignment strategy or notification channel is one new class or one row of data, with no change elsewhere ([`OPEN_CLOSED_EXAMPLES.md`](OPEN_CLOSED_EXAMPLES.md)). |
 | NFR-3 | **Security** | JWT authentication, Argon2id passwords, role guard on every endpoint plus domain ownership rules, validated input, restricted CORS, no stack traces in errors. |
 | NFR-4 | **Reliability** | One database transaction per request (Unit of Work); a failed notification never rolls back the incident change; database errors become HTTP 503. |
 | NFR-5 | **Performance** | Indexed queries for the queue, search and dashboards; paginated results; similarity computed only over a 24 h, same-service candidate set. |
 | NFR-6 | **Usability** | A separate interface per role, live suggestions while typing, plain-language reasons for every automatic decision, keyboard and screen-reader friendly components, works on phone width. |
-| NFR-7 | **Explainability** | Every intelligent feature returns its reasons ("has NETWORK skill · 1/8 active incidents · 10 yrs experience"). |
+| NFR-7 | **Explainability** | Every intelligent feature returns its reasons ("has NETWORK skill · 1/8 active incidents · 10 yrs experience"), and each incident page gathers them in a **Why Decerno decided** card. |
 | NFR-8 | **Portability** | Runs on Windows, macOS and Linux; the same schema runs on PostgreSQL and SQLite; CI checks both. |
 | NFR-9 | **Auditability** | The audit trail is append-only. |
 
@@ -821,6 +821,21 @@ examiner, need no training data (a new organisation has none), and behave predic
 statistics clearly help (text similarity), and it is hidden behind the `TextSimilarity` interface, so a sentence-embedding
 model could replace it with no other change.
 
+### Explainability: the `Why Decerno decided` card
+
+Every incident page has one card that lists each automatic decision with the reason the system recorded when it made it:
+
+| Decision | Example of what the card shows |
+|---|---|
+| Category | `Auto-suggested, confidence 0.60` or `Chosen by the reporter` |
+| Priority | `Impact 4 × urgency 3 × criticality 4 = 48; ×1.5 for 200 affected users → 64 → P1 (Critical)` |
+| Deadlines | `Respond within 3 min · resolve within 20 min`: the P1 policy for Payments Platform, and any time paused while waiting for the reporter |
+| Technician | `Skill-based: has APPLICATION skill and the lowest load among skilled (2 active)` |
+| Similar reports | `When reported: possible duplicate of DCN-1038 (86% similar)`, plus reports linked later |
+| Escalation | `Level 4 · IT Manager`: the chain it went through |
+
+The card reads the incident and its audit trail; it does not recompute anything, so it always matches what actually happened. It is the reason for the name: *decernō*, `I decide`, and Decerno shows why.
+
 ### Innovation features
 
 From the spec's innovation list: **real-time operational dashboard** (Server-Sent Events), **service dependency graph**,
@@ -851,7 +866,7 @@ page), and **CI/CD** with GitHub Actions.
 | Styling | Tailwind CSS | 4.3 | Design tokens, responsive layout, dark mode |
 | Routing | React Router | 8.5 | Role-based routes |
 | Browser APIs | Web Speech API, EventSource (SSE) | | Voice input, live updates |
-| Testing | pytest, httpx (FastAPI TestClient) | | 171 automated cases |
+| Testing | pytest, httpx (FastAPI TestClient) | | 178 automated cases |
 | CI | GitHub Actions | | Tests on SQLite and PostgreSQL 18, migration + seed, frontend build |
 | Version control | Git, GitHub | | Feature branches, pull requests |
 
@@ -938,7 +953,7 @@ The spec asks nine questions. Each answer gives the reason, not just the choice.
 
 **Advantages**
 
-- A clear, type-checked OOP domain; 171 tests that run in about 20 seconds.
+- A clear, type-checked OOP domain; 178 tests that run in about 40 seconds.
 - Automatic API documentation; automatic validation; one-line role guards.
 - Explainable intelligence with a well-known library.
 - Free, open-source, cross-platform; one command to run each side.
@@ -1250,7 +1265,7 @@ refresh tokens or login rate limiting (add per-IP and per-account limits and loc
 | Service | `tests/services` | Use cases end to end with in-memory repositories and a controllable clock | none |
 | API / integration | `tests/api` | HTTP routes, role guards, error mapping, SQL repositories, the seed script, CSV export | SQLite in memory, **and** PostgreSQL 18 |
 
-- **171 test cases** (107 test functions, some parametrised), about 20 seconds.
+- **178 test cases** (108 test functions, some parametrised), about 40 seconds.
 - A **fixed, controllable clock** makes every time-based rule (SLA warnings, breaches, escalation levels) testable at
   exact boundaries.
 - **GitHub Actions CI** runs the suite on SQLite and on a PostgreSQL 18 container, runs the migrations and the seed on a
@@ -1320,7 +1335,7 @@ ready for the following steps, which change infrastructure classes but not the d
 | Global use | Latency | Containerise (Docker), deploy to Kubernetes or a managed platform, CDN for the frontend | Deployment only |
 
 Because every one of these sits behind an existing interface (`UnitOfWork`, `NotificationChannel`, `TextSimilarity`,
-`EventObserver`), the business rules and their 171 tests stay unchanged. This is the practical payoff of the
+`EventObserver`), the business rules and their 178 tests stay unchanged. This is the practical payoff of the
 object-oriented design.
 
 Other planned improvements: real e-mail / SMS providers, business-hours SLA calendars, OAuth single sign-on, login rate
@@ -1349,7 +1364,7 @@ features, seven design patterns, real-time dashboards, a service dependency grap
 The main lesson is the one the project set out to show: **object-oriented design makes change cheap.** Switching the
 assignment strategy at runtime, adding a category without code, pausing the SLA clock, adding rating-aware
 recommendations and recurring-problem detection late in the project were all local changes, because each concern
-lives behind its own abstraction. The 171 tests, which stayed green through those changes, are the evidence.
+lives behind its own abstraction. The 178 tests, which stayed green through those changes, are the evidence.
 
 ---
 
@@ -1376,7 +1391,7 @@ lives behind its own abstraction. The 171 tests, which stayed green through thos
 | All 12 exception cases | ✅ | Section 10 |
 | Security minimum | ✅ | Section 11 |
 | ≥ 2 design patterns | ✅ 7 | Section 5.2 |
-| ≥ 15 test cases | ✅ 106 documented, 171 automated | Section 12 |
+| ≥ 15 test cases | ✅ 107 documented, 178 automated | Section 12 |
 | Architecture, use case, class diagrams | ✅ | Sections 3-4 |
 | Technology selection: 9 questions | ✅ | Section 8 |
 | ER diagram, schema, relationships, sample data | ✅ | Section 9 |

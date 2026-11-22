@@ -117,7 +117,7 @@ Times are relative to "now", so re-seed shortly before a demo (open P1s keep esc
 
 ```bash
 cd backend
-.venv/bin/pytest                                   # 171 cases, SQLite in-memory, no setup needed
+.venv/bin/pytest                                   # 178 cases, SQLite in-memory, no setup needed
 ITSM_TEST_DATABASE_URL=postgresql+psycopg://<user>@localhost:5432/itsm_test .venv/bin/pytest tests/api   # same tests on PostgreSQL
 ```
 

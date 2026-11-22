@@ -5,6 +5,7 @@ import type { Comment, IncidentAction, IncidentDetail, User } from "../../api/ty
 import { isStaff, useUser } from "../../auth/AuthContext";
 import { EscalationBadge, PriorityBadge, StatusBadge } from "../../components/badges";
 import { Stars } from "../../components/charts";
+import { DecisionTrail } from "../../components/DecisionTrail";
 import { ArrowLeftIcon, StarIcon } from "../../components/icons";
 import { SlaPanel } from "../../components/SlaPanel";
 import { Timeline } from "../../components/Timeline";
@@ -504,6 +505,7 @@ export function IncidentDetailPage() {
               </p>
             )}
           </Card>
+          <DecisionTrail incident={i} audit={audit.data} />
           <Conversation incident={i} user={user} refresh={refresh} />
           <Card title="History (audit trail)">
             {audit.data ? <Timeline records={audit.data} /> : <Spinner />}
